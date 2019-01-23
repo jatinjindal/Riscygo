@@ -33,13 +33,58 @@ while True:
 """
 
 class GoLexer(object):
-    tokens = (
-        'FOO',
-        'BAR'
+
+        # List of token names.   This is always required
+    tokens = ('LT', 'GT','LE','GE','EQ', 'NE','NOT','LOR','LAND',
+      'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR', 'XOR', 'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT',
+    'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL' 
     )
 
-    t_FOO = r'FOO'
-    t_BAR = r'BAR'
+    # Regular expression rules for operators
+
+
+    #Relation operators
+    t_LT               = r'<'
+    t_GT               = r'>'
+    t_LE               = r'<='
+    t_GE               = r'>='
+    t_EQ               = r'=='
+    t_NE               = r'!='
+    t_NOT              = r'~'
+    t_LOR              = r'\|\|'
+    t_LAND             = r'&&'
+
+    #Arithmetic operators
+    t_PLUS             = r'\+'
+    t_MINUS            = r'-'
+    t_TIMES            = r'\*'
+    t_DIVIDE           = r'/'
+    t_MODULO           = r'%'
+    t_OR               = r'\|'
+    t_XOR              = r'\^'
+    t_LSHIFT           = r'<<'
+    t_RSHIFT           = r'>>'
+    t_AND              = r'&'
+    #implemented by them but not needed
+    t_ANDNOT           = r'&^'
+
+    #Assignment Operators
+    t_EQUALS           = r'='
+    t_TIMESEQUAL       = r'\*='
+    t_DIVEQUAL         = r'/='
+    t_MODEQUAL         = r'%='
+    t_PLUSEQUAL        = r'\+='
+    t_MINUSEQUAL       = r'-='
+    t_LSHIFTEQUAL      = r'<<='
+    t_RSHIFTEQUAL      = r'>>='
+    t_ANDEQUAL         = r'&='
+    t_OREQUAL          = r'\|='
+    t_XOREQUAL         = r'\^='
+    t_AUTOASIGN        = r':='
+
+    t_ANDNOTEQUAL           = r'&^='
+
+
 
     def t_newline(self, t):
         r'\n+'
