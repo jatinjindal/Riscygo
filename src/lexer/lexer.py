@@ -1,3 +1,9 @@
+
+
+def find_column(input, token):
+     line_start = input.rfind('\n', 0, token.lexpos) + 1
+     return (token.lexpos - line_start) + 1
+
 import lex
 
 
@@ -29,18 +35,24 @@ def t_newline(t):
     r'\n+'
     t.lexer.lineno += t.value.count("\n")
 
+def t_tabs(t):
+    r'\t+'
+    t.lexpos += t.value.count("\t")
+
 def t_error(t):
     print("Illegal character '%s'" % t.value[0])
     t.lexer.skip(1)
 
 lexer=lex.lex()
 
-data = ''' 3 + 4 * 10 + -20 *2 '''
+
+data = '''			3 + 4\n * 10 + -20 *2 '''
  
 lexer.input(data)
 
 while True:
     tok = lexer.token()
     if not tok: 
-        break      
+        break  
+    tok.lexpos=find_column(data, tok)    
     print(tok)
