@@ -193,7 +193,6 @@ class GoLexer(object):
             tok = self.lexer.token()
             if not tok:
                 break
-            print(tok)
             if tok.lineno != line:
                 html_out += '<br>' * (tok.lineno - line)
                 line, pos = tok.lineno, 0

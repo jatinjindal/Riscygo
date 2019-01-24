@@ -79,6 +79,6 @@ for x in tokens:
     b = rand.randint(100, 255)
     g = rand.randint(100, 255)
     r, b, g = list(map(lambda x: hex(x)[2:], [r, g, b]))
-    color = '0x' + r + b + g
+    color = '#' + r + b + g
     f.write(x + " " + str(color) + "\n")
 f.close()

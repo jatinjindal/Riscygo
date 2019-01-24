@@ -128,3 +128,4 @@ dmypy.json
 
 output/
 *.swp
+tests/cfg1
