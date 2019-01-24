@@ -193,14 +193,15 @@ class GoLexer(object):
             tok = self.lexer.token()
             if not tok:
                 break
+            print(tok)
             if tok.lineno != line:
-                html_out += '<br>'
-                line, pos = line + 1, 0
+                html_out += '<br>' * (tok.lineno - line)
+                line, pos = tok.lineno, 0
             column = self.find_column(raw_data, tok)
             html_out += '&nbsp;' * (column - pos)
-            pos += column
+            pos += column + len(str(tok.value))
             tag_wrap = '<font color="' + color_map[
-                tok.type] + '">' + str(tok.value) + '<\\font>'
+                tok.type] + '">' + str(tok.value) + '</font>'
             html_out += tag_wrap
         with open(out_file, 'w+') as f:
             f.write(html_out)
