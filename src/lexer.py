@@ -148,12 +148,10 @@ class GoLexer(object):
 
     def t_FLOAT(self, t):
         r'(\d+\.\d*)|(\d+\.\d*(e|E)[\+|\-]\d+)|((\d+)(e|E)[\+|\-]\d+)|(\.\d+)|(\.\d+(e|E)[\+|\-]\d+)'
-        t.value = float(t.value)
         return t
 
     def t_INTEGER(self, t):
         r'(\d+)|(0(x|X)[0-9a-fA-F]+)'
-        t.value = int(t.value)
         return t
 
     def t_MULTICOMMENT(self, t):
