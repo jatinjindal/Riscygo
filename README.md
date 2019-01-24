@@ -1,2 +1,4 @@
-# Go_Compiler
-An implementation of a naive Go compiler written in python to produce RISC-V
+riscygo
+=======
+
+An implementation of a naive Go compiler written in Python to produce RISC-V machine code.

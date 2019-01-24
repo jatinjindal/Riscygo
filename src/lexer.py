@@ -5,8 +5,6 @@ import sys
 
 import ply.lex as lex
 
-
-
 class GoLexer(object):
 
         # List of token names.   This is always required
@@ -46,7 +44,7 @@ class GoLexer(object):
 
     tokens = ['LT', 'GT','LE','GE','EQ', 'NE','NOT','LOR','LAND',
       'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR', 'XOR', 'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT',
-    'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL', 
+    'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL',
     'ID','LPAREN', 'RPAREN',
     'LBRACKET', 'RBRACKET',
     'LBRACE', 'RBRACE',
@@ -54,7 +52,7 @@ class GoLexer(object):
     'ELLIPSIS',
     'STRING','CHARACTER','NUMBER','FLOAT',
     'COMMENT','MULTICOMMENT'
-    
+
     ] + list(set(reserved.values()))
 
     # Regular expression rules for operators
@@ -129,7 +127,7 @@ class GoLexer(object):
 
     def t_NUMBER(self,t):
         r'\d+'
-        t.value = int(t.value)    
+        t.value = int(t.value)
         return t
 
 
