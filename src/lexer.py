@@ -176,7 +176,7 @@ class GoLexer(object):
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-    def find_column(raw_data, token):
+    def find_column(self, raw_data, token):
         line_start = raw_data.rfind('\n', 0, token.lexpos) + 1
         return (token.lexpos - line_start) + 1
 
@@ -193,14 +193,14 @@ class GoLexer(object):
             tok = self.lexer.token()
             if not tok:
                 break
-            if tok.lineno != current_line:
+            if tok.lineno != line:
                 html_out += '<br>'
                 line, pos = line + 1, 0
-            column = find_column(raw_data, tok)
+            column = self.find_column(raw_data, tok)
             html_out += '&nbsp;' * (column - pos)
             pos += column
             tag_wrap = '<font color="' + color_map[
-                tok.type] + '">' + tok.value + '<\\font>'
+                tok.type] + '">' + str(tok.value) + '<\\font>'
             html_out += tag_wrap
         with open(out_file, 'w+') as f:
             f.write(html_out)
@@ -218,7 +218,7 @@ def main():
     raw_data = re.sub(r'\t', '    ', raw_data)
     lexer = GoLexer()
     lexer.build()
-    lexer.lex(raw_data, out_file, config_file)
+    lexer.lex(raw_data, args.out, args.cfg)
 
 
 if __name__ == '__main__':
