@@ -11,7 +11,7 @@ import sys
 import tempfile
 
 # don't fill in both of these
-ignore_codes = []
+ignore_codes = ["E501"]
 select_codes = []
 # Add things like "--max-line-length=120" below
 overrides = []

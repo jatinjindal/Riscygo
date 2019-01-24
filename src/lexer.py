@@ -42,14 +42,15 @@ class GoLexer(object):
         'int': 'TYPEID',
     }
 
-    tokens = ('LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'NOT', 'LOR', 'LAND', 'PLUS',
-              'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR', 'XOR', 'LSHIFT',
-              'RSHIFT', 'AND', 'ANDNOT', 'EQUALS', 'TIMESEQUAL', 'DIVEQUAL',
-              'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL', 'LSHIFTEQUAL',
-              'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL', 'AUTOASIGN',
-              'ANDNOTEQUAL', 'ID', 'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET',
-              'LBRACE', 'RBRACE', 'COMMA', 'PERIOD', 'SEMI', 'COLON',
-              'ELLIPSIS', 'STRING', 'CHARACTER', 'NUMBER', 'FLOAT', 'COMMENT',
+    tokens = ('LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'NOT', 'LNOT', 'LOR', 'LAND',
+              'LARROW', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR',
+              'XOR', 'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT', 'INCR', 'DECR',
+              'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL',
+              'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL',
+              'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL', 'ID',
+              'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
+              'COMMA', 'PERIOD', 'SEMI', 'COLON', 'ELLIPSIS', 'STRING',
+              'CHARACTER', 'NUMBER', 'FLOAT', 'COMMENT',
               'MULTICOMMENT') + list(set(reserved.values()))
 
     # Regular expression rules for operators
@@ -61,13 +62,15 @@ class GoLexer(object):
     t_GE = r'>='
     t_EQ = r'=='
     t_NE = r'!='
-    t_NOT = r'~'
+    t_NOT = r'!'
+    t_LNOT = r'~'
     t_LOR = r'\|\|'
     t_LAND = r'&&'
+    t_LARROW = r'<\-'
 
     # Arithmetic operators
     t_PLUS = r'\+'
-    t_MINUS = r'-'
+    t_MINUS = r'\-'
     t_TIMES = r'\*'
     t_DIVIDE = r'/'
     t_MODULO = r'%'
@@ -76,24 +79,24 @@ class GoLexer(object):
     t_LSHIFT = r'<<'
     t_RSHIFT = r'>>'
     t_AND = r'&'
-    # implemented by them but not needed
-    t_ANDNOT = r'&^'
+    t_ANDNOT = r'&\^'
+    t_INCR = r'\+\+'
+    t_DECR = r'\-\-'
 
-    # Assignment Operators
+    # Assignment operators
     t_EQUALS = r'='
+    t_AUTOASIGN = r':='
     t_TIMESEQUAL = r'\*='
     t_DIVEQUAL = r'/='
     t_MODEQUAL = r'%='
     t_PLUSEQUAL = r'\+='
-    t_MINUSEQUAL = r'-='
+    t_MINUSEQUAL = r'\-='
     t_LSHIFTEQUAL = r'<<='
     t_RSHIFTEQUAL = r'>>='
     t_ANDEQUAL = r'&='
     t_OREQUAL = r'\|='
     t_XOREQUAL = r'\^='
-    t_AUTOASIGN = r':='
-
-    t_ANDNOTEQUAL = r'&^='
+    t_ANDNOTEQUAL = r'&\^='
 
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
@@ -101,9 +104,10 @@ class GoLexer(object):
     t_RBRACKET = r'\]'
     t_LBRACE = r'\{'
     t_RBRACE = r'\}'
-    t_COMMA = r','
+    t_COMMA = r'\,'
     t_PERIOD = r'\.'
     t_SEMI = r';'
+    t_COLON = r':'
     t_ELLIPSIS = r'\.\.\.'
 
     t_STRING = r'\"([^\\\n]|(\\.))*?\"'
@@ -143,7 +147,7 @@ class GoLexer(object):
     def t_error(self, t):
         print("Illegal character '%s'" % str(t.value[0]))
         print("Value of the illegal token is '%s'" % str(t.value))
-        sys.exit(1)
+        t.lexer.skip(1)
 
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
