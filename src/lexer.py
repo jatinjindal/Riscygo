@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 
 import argparse
+import re
 import sys
 
 import ply.lex as lex
@@ -74,7 +75,8 @@ class GoLexer(object):
         'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL',
         'AUTOASIGN', 'ANDNOTEQUAL', 'ID', 'LPAREN', 'RPAREN', 'LBRACKET',
         'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA', 'PERIOD', 'SEMI', 'COLON',
-        'ELLIPSIS', 'CHARACTER', 'COMMENT', 'MULTICOMMENT', 'INTEGER', 'FLOAT'
+        'ELLIPSIS', 'CHARACTER', 'COMMENT', 'MULTICOMMENT', 'INTEGER', 'FLOAT',
+        'STRINGVAL'
     ] + list(set(combined_map.values()))
 
     # Regular expression rules for operators
@@ -134,7 +136,7 @@ class GoLexer(object):
     t_COLON = r':'
     t_ELLIPSIS = r'\.\.\.'
 
-    t_STRING = r'\"([^\\\n]|(\\.))*?\"'
+    t_STRINGVAL = r'\"([^\\\n]|(\\.))*?\"'
     t_CHARACTER = r'(L)?\'([^\\\n]|(\\.))*?\''
 
     t_ignore = ' \t'
@@ -149,7 +151,7 @@ class GoLexer(object):
         t.value = float(t.value)
         return t
 
-    def t_NUMBER(self, t):
+    def t_INTEGER(self, t):
         r'(\d+)|(0(x|X)[0-9a-fA-F]+)'
         t.value = int(t.value)
         return t
@@ -174,13 +176,34 @@ class GoLexer(object):
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-    def lex(self, raw_data):
+    def find_column(raw_data, token):
+        line_start = raw_data.rfind('\n', 0, token.lexpos) + 1
+        return (token.lexpos - line_start) + 1
+
+    def lex(self, raw_data, out_file, config_file):
+        color_map = {}
+        with open(config_file, 'r') as f:
+            lines = list(map(lambda x: x.strip().split(' '), f.readlines()))
+        for line in lines:
+            color_map[line[0]] = line[1]
+        html_out = ""
+        line, pos = 0, 0
         self.lexer.input(raw_data)
         while True:
             tok = self.lexer.token()
             if not tok:
                 break
-            print(tok)
+            if tok.lineno != current_line:
+                html_out += '<br>'
+                line, pos = line + 1, 0
+            column = find_column(raw_data, tok)
+            html_out += '&nbsp;' * (column - pos)
+            pos += column
+            tag_wrap = '<font color="' + color_map[
+                tok.type] + '">' + tok.value + '<\\font>'
+            html_out += tag_wrap
+        with open(out_file, 'w+') as f:
+            f.write(html_out)
 
 
 def main():
@@ -195,7 +218,7 @@ def main():
     raw_data = re.sub(r'\t', '    ', raw_data)
     lexer = GoLexer()
     lexer.build()
-    lexer.lex(raw_data)
+    lexer.lex(raw_data, out_file, config_file)
 
 
 if __name__ == '__main__':
