@@ -11,10 +11,10 @@ import sys
 import tempfile
 
 # don't fill in both of these
-ignore_codes = ["E501"]
+ignore_codes = []
 select_codes = []
 # Add things like "--max-line-length=120" below
-overrides = []
+overrides = ["--max-line-length=120"]
 
 
 def system(*args, **kwargs):

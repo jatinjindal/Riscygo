@@ -34,24 +34,48 @@ class GoLexer(object):
         'import': 'IMPORT',
         'return': 'RETURN',
         'var': 'VAR',
-        'bool': 'TYPEID',
-        'int': 'TYPEID',
-        'float32': 'TYPEID',
-        'float64': 'TYPEID',
-        'byte': 'TYPEID',
-        'int': 'TYPEID',
     }
 
-    tokens = ('LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'NOT', 'LNOT', 'LOR', 'LAND',
-              'LARROW', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR',
-              'XOR', 'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT', 'INCR', 'DECR',
-              'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL',
-              'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL',
-              'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL', 'ID',
-              'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
-              'COMMA', 'PERIOD', 'SEMI', 'COLON', 'ELLIPSIS', 'STRING',
-              'CHARACTER', 'NUMBER', 'FLOAT', 'COMMENT',
-              'MULTICOMMENT') + list(set(reserved.values()))
+    types = {
+        'bool': 'BOOL',
+        'byte': 'BYTE',
+        'int': 'INT',
+        'uint8': 'UINT8',
+        'uint16': 'UINT16',
+        'uint32': 'UINT32',
+        'uint64': 'UINT64',
+        'int8': 'INT8',
+        'int16': 'INT16',
+        'int32': 'INT32',
+        'int64': 'INT64',
+        'int': 'INT',
+        'uint': 'UINT',
+        'float32': 'FLOAT32',
+        'float64': 'FLOAT64',
+        'uintptr': 'UINTPTR',
+        'string': 'STRING',
+        'error': 'ERROR',
+    }
+
+    constants = {
+        'true': 'TRUE',
+        'false': 'FALSE',
+        'iota': 'IOTA',
+        'nil': 'NIL',
+    }
+
+    combined_map = dict(reserved, **dict(types, **constants))
+
+    tokens = [
+        'LT', 'GT', 'LE', 'GE', 'EQ', 'NE', 'NOT', 'LNOT', 'LOR', 'LAND',
+        'LARROW', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR', 'XOR',
+        'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT', 'INCR', 'DECR', 'EQUALS',
+        'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL',
+        'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL',
+        'AUTOASIGN', 'ANDNOTEQUAL', 'ID', 'LPAREN', 'RPAREN', 'LBRACKET',
+        'RBRACKET', 'LBRACE', 'RBRACE', 'COMMA', 'PERIOD', 'SEMI', 'COLON',
+        'ELLIPSIS', 'CHARACTER', 'COMMENT', 'MULTICOMMENT', 'INTEGER', 'FLOAT'
+    ] + list(set(combined_map.values()))
 
     # Regular expression rules for operators
 
@@ -62,8 +86,8 @@ class GoLexer(object):
     t_GE = r'>='
     t_EQ = r'=='
     t_NE = r'!='
-    t_NOT = r'!'
-    t_LNOT = r'~'
+    t_NOT = r'~'
+    t_LNOT = r'!'
     t_LOR = r'\|\|'
     t_LAND = r'&&'
     t_LARROW = r'<\-'
@@ -117,28 +141,26 @@ class GoLexer(object):
 
     def t_ID(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
-        t.type = self.reserved.get(t.value, 'ID')  # Check for reserved words
+        t.type = self.combined_map.get(t.value, 'ID')
         return t
 
     def t_FLOAT(self, t):
-        r'((\d+)(\.\d+)(e(\+|-)?(\d+))? | (\d+)e(\+|-)?(\d+))'
+        r'(\d+\.\d*)|(\d+\.\d*(e|E)[\+|\-]\d+)|((\d+)(e|E)[\+|\-]\d+)|(\.\d+)|(\.\d+(e|E)[\+|\-]\d+)'
         t.value = float(t.value)
         return t
 
     def t_NUMBER(self, t):
-        r'\d+'
+        r'(\d+)|(0(x|X)[0-9a-fA-F]+)'
         t.value = int(t.value)
         return t
 
     def t_MULTICOMMENT(self, t):
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count('\n')
-        return t
 
     def t_COMMENT(self, t):
         r'//.*\n'
         t.lexer.lineno += 1
-        return t
 
     def t_newline(self, t):
         r'\n+'
@@ -170,6 +192,7 @@ def main():
     args = parser.parse_args()
     with open(args.input, 'r') as f:
         raw_data = ''.join(f.readlines())
+    raw_data = re.sub(r'\t', '    ', raw_data)
     lexer = GoLexer()
     lexer.build()
     lexer.lex(raw_data)
