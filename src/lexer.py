@@ -5,65 +5,46 @@ import sys
 
 import ply.lex as lex
 
-"""
-A Sample Program for lexing
 
-tokens = ('NAME', 'NUMBER', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'EQUALS')
-
-t_ignore = ' \t'
-t_PLUS   = r'\+'
-t_MINUS  = r'-'
-t_TIMES  = r'\*'
-t_DIVIDE = r'/'
-t_EQUALS = r'='
-t_NAME   = r'[a-zA-Z_][a-zA-Z0-9_]*'
-
-def t_NUMBER(t):
-    r'\d+'
-    t.value = int(t.value)
-    return t
-
-lex.lex()
-
-lex.input("x = 32222 * 4 + 5 * 6")
-while True:
-    tok = lex.token()
-    if not tok: break
-    print tok
-"""
 
 class GoLexer(object):
 
         # List of token names.   This is always required
-     reserved = {
-   'break'      :'BREAK'
-   'default':'DEFAULT'
-   'func':'FUNC'
-   'interface':'INTERFACE'
-   'select':'SELECT'
-   'case':'CASE'
-   'defer':'DEFER'
-   'go':'GO'
-   'map':'MAP'
-   'struct':'STRUCT'
-   'chan':'CHAN'
-   'else':'ELSE'
-   'goto':'GOTO'
-   'package':'PACKAGE'
-   'switch':'SWITCH'
-   'const':'CONST'
-   'fallthrough':'FALLTHROUGH'
-   'if':'IF'
-   'range':'RANGE'
-   'type':'TYPE'
-   'continue':'CONTINUE'
-   'for':'FOR'
-   'import':'IMPORT'
-   'return':'RETURN'
-   'var':'VAR'
+    reserved = {
+   'break'      :'BREAK',
+   'default':'DEFAULT',
+   'func':'FUNC',
+   'interface':'INTERFACE',
+   'select':'SELECT',
+   'case':'CASE',
+   'defer':'DEFER',
+   'go':'GO',
+   'map':'MAP',
+   'struct':'STRUCT',
+   'chan':'CHAN',
+   'else':'ELSE',
+   'goto':'GOTO',
+   'package':'PACKAGE',
+   'switch':'SWITCH',
+   'const':'CONST',
+   'fallthrough':'FALLTHROUGH',
+   'if':'IF',
+   'range':'RANGE',
+   'type':'TYPE',
+   'continue':'CONTINUE',
+   'for':'FOR',
+   'import':'IMPORT',
+   'return':'RETURN',
+   'var':'VAR',
+   'bool':'TYPEID',
+   'int':'TYPEID',
+   'float32':'TYPEID',
+   'float64':'TYPEID',
+   'byte':'TYPEID',
+   'int':'TYPEID',
+    }
 
- }
-    tokens = ('LT', 'GT','LE','GE','EQ', 'NE','NOT','LOR','LAND',
+    tokens = ['LT', 'GT','LE','GE','EQ', 'NE','NOT','LOR','LAND',
       'PLUS', 'MINUS', 'TIMES', 'DIVIDE', 'MODULO', 'OR', 'XOR', 'LSHIFT', 'RSHIFT', 'AND', 'ANDNOT',
     'EQUALS', 'TIMESEQUAL', 'DIVEQUAL', 'MODEQUAL', 'PLUSEQUAL', 'MINUSEQUAL', 'LSHIFTEQUAL', 'RSHIFTEQUAL', 'ANDEQUAL', 'OREQUAL', 'XOREQUAL', 'AUTOASIGN', 'ANDNOTEQUAL', 
     'ID','LPAREN', 'RPAREN',
@@ -71,8 +52,10 @@ class GoLexer(object):
     'LBRACE', 'RBRACE',
     'COMMA', 'PERIOD', 'SEMI', 'COLON',
     'ELLIPSIS',
+    'STRING','CHARACTER','NUMBER','FLOAT',
+    'COMMENT','MULTICOMMENT'
     
-    ) + list(reserved.values())
+    ] + list(set(reserved.values()))
 
     # Regular expression rules for operators
 
@@ -129,10 +112,35 @@ class GoLexer(object):
     t_SEMI             = r';'
     t_ELLIPSIS         = r'\.\.\.'
 
+    t_STRING = r'\"([^\\\n]|(\\.))*?\"'
+    t_CHARACTER = r'(L)?\'([^\\\n]|(\\.))*?\''
 
-    def t_ID(t):
+    t_ignore  = ' \t'
+
+    def t_ID(self,t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
-        t.type = reserved.get(t.value,'ID')    # Check for reserved words
+        t.type = self.reserved.get(t.value,'ID')    # Check for reserved words
+        return t
+
+    def t_FLOAT(self,t):
+        r'((\d+)(\.\d+)(e(\+|-)?(\d+))? | (\d+)e(\+|-)?(\d+))'
+        t.value=float(t.value)
+        return t
+
+    def t_NUMBER(self,t):
+        r'\d+'
+        t.value = int(t.value)    
+        return t
+
+
+    def t_MULTICOMMENT(self,t):
+        r'/\*(.|\n)*?\*/'
+        t.lexer.lineno += t.value.count('\n')
+        return t
+
+    def t_COMMENT(self,t):
+        r'//.*\n'
+        t.lexer.lineno += 1
         return t
 
     def t_newline(self, t):
