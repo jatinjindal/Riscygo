@@ -159,10 +159,12 @@ class GoLexer(object):
     def t_MULTICOMMENT(self, t):
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count('\n')
+        return t
 
     def t_COMMENT(self, t):
         r'//.*\n'
         t.lexer.lineno += 1
+        return t
 
     def t_newline(self, t):
         r'\n+'
@@ -187,21 +189,24 @@ class GoLexer(object):
         for line in lines:
             color_map[line[0]] = line[1]
         html_out = ""
-        line, pos = 0, 0
         self.lexer.input(raw_data)
+        tok = self.lexer.token()
+        line, pos = tok.lineno, tok.lexpos
         while True:
-            tok = self.lexer.token()
             if not tok:
                 break
             if tok.lineno != line:
                 html_out += '<br>' * (tok.lineno - line)
-                line, pos = tok.lineno, 0
-            column = self.find_column(raw_data, tok)
-            html_out += '&nbsp;' * (column - pos)
-            pos += column + len(str(tok.value))
+                line, pos = tok.lineno, pos + (tok.lineno - line)
+            print(pos, tok)
+            html_out += '&nbsp;&nbsp;' * (tok.lexpos - pos)
+            pos = tok.lexpos + len(str(tok.value))
             tag_wrap = '<font color="' + color_map[
                 tok.type] + '">' + str(tok.value) + '</font>'
             html_out += tag_wrap
+            if tok.type == 'COMMENT':
+                pos -= 1
+            tok = self.lexer.token()
         with open(out_file, 'w+') as f:
             f.write(html_out)
 

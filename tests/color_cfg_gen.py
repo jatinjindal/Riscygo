@@ -75,9 +75,9 @@ tokens = [
 ] + list(set(combined_map.values()))
 
 for x in tokens:
-    r = rand.randint(100, 255)
-    b = rand.randint(100, 255)
-    g = rand.randint(100, 255)
+    r = rand.randint(0, 150)
+    b = rand.randint(0, 150)
+    g = rand.randint(0, 150)
     r, b, g = list(map(lambda x: hex(x)[2:], [r, g, b]))
     color = '#' + r + b + g
     f.write(x + " " + str(color) + "\n")
