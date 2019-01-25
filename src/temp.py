@@ -141,13 +141,12 @@ class GoLexer(object):
 
     t_ignore = ' \t'
 
-
     def t_FLOAT(self, t):
-        r'(\d+\.\d*(e|E)[\+|\-]\d+)|((\d+)(e|E)[\+|\-]\d+)|(\.\d+(e|E)[\+|\-]\d+)|(\d+\.\d*)|(\.\d+)'
+        r'(\d+\.\d*)|(\d+\.\d*(e|E)[\+|\-]\d+)|((\d+)(e|E)[\+|\-]\d+)|(\.\d+)|(\.\d+(e|E)[\+|\-]\d+)'
         return t
 
     def t_INTEGER(self, t):
-        r'0[xX][0-9a-fA-F]+|\d+'
+        r'(\d+)|(0(x|X)[0-9a-fA-F]+)'
         return t
 
 
@@ -199,7 +198,7 @@ class GoLexer(object):
             if tok.lineno != line:
                 html_out += '<br>' * (tok.lineno - line)
                 line, pos = tok.lineno, pos + (tok.lineno - line)
-            print(pos, tok)
+            print(tok)
             html_out += '&nbsp;&nbsp;' * (tok.lexpos - pos)
             pos = tok.lexpos + len(str(tok.value))
             tag_wrap = '<font color="' + color_map[
