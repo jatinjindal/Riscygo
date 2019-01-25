@@ -143,7 +143,7 @@ class GoLexer(object):
 
 
     def t_FLOAT(self, t):
-        r'(\d+\.\d*(e|E)[\+|\-]\d+)|((\d+)(e|E)[\+|\-]\d+)|(\.\d+(e|E)[\+|\-]\d+)|(\d+\.\d*)|(\.\d+)'
+        r'(\d+\.\d*(e|E)[\+|\-]?\d+)|((\d+)(e|E)[\+|\-]?\d+)|(\.\d+(e|E)[\+|\-]?\d+)|(\d+\.\d*)|(\.\d+)'
         return t
 
     def t_INTEGER(self, t):
@@ -179,9 +179,10 @@ class GoLexer(object):
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-    def find_column(self, raw_data, token):
+'''    def find_column(self, raw_data, token):
         line_start = raw_data.rfind('\n', 0, token.lexpos) + 1
-        return (token.lexpos - line_start) + 1
+        return (token.lexpos - line_start) + 1  
+        '''
 
     def lex(self, raw_data, out_file, config_file):
         color_map = {}
