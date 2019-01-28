@@ -141,7 +141,6 @@ class GoLexer(object):
 
     t_ignore = ' \t'
 
-
     def t_FLOAT(self, t):
         r'(\d+\.\d*(e|E)[\+|\-]?\d+)|((\d+)(e|E)[\+|\-]?\d+)|(\.\d+(e|E)[\+|\-]?\d+)|(\d+\.\d*)|(\.\d+)'
         return t
@@ -150,13 +149,11 @@ class GoLexer(object):
         r'0[xX][0-9a-fA-F]+|\d+'
         return t
 
-
     def t_ID(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
         t.type = self.combined_map.get(t.value, 'ID')
         return t
 
-    
     def t_MULTICOMMENT(self, t):
         r'/\*(.|\n)*?\*/'
         t.lexer.lineno += t.value.count('\n')
@@ -179,10 +176,9 @@ class GoLexer(object):
     def build(self, **kwargs):
         self.lexer = lex.lex(module=self, **kwargs)
 
-'''    def find_column(self, raw_data, token):
+    def find_column(self, raw_data, token):
         line_start = raw_data.rfind('\n', 0, token.lexpos) + 1
-        return (token.lexpos - line_start) + 1  
-        '''
+        return (token.lexpos - line_start) + 1
 
     def lex(self, raw_data, out_file, config_file):
         color_map = {}
@@ -200,11 +196,10 @@ class GoLexer(object):
             if tok.lineno != line:
                 html_out += '<br>' * (tok.lineno - line)
                 line, pos = tok.lineno, pos + (tok.lineno - line)
-            print(pos, tok)
             html_out += '&nbsp;&nbsp;' * (tok.lexpos - pos)
             pos = tok.lexpos + len(str(tok.value))
-            tag_wrap = '<font color="' + color_map[
-                tok.type] + '">' + str(tok.value) + '</font>'
+            tag_wrap = '<font color="' + color_map[tok.type] + '">' + str(
+                tok.value) + '</font>'
             html_out += tag_wrap
             if tok.type == 'COMMENT':
                 pos -= 1
