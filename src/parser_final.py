@@ -715,8 +715,13 @@ def p_Types(p):
               | TypeLit'''
 
 def p_Typelit(p):
-    " TypeLit : StructType"
+    ''' TypeLit : StructType
+    			| ArrayType
+    			| PointerType
+    			'''
 
+def p_PointerType(p):
+	'PointerType : TIMES Types'
     
 
 
@@ -804,47 +809,48 @@ yacc.yacc()
 filename=argv[1]
 f=open(filename,'r+')
 program=f.read().strip()
-program="""package main
+# program="""package main
 
 
 
-type person struct 
-{
-    name string;
-    age  int;
-}
+# type person struct 
+# {
+#     name string;
+#     age  int;
+# }
 
-func main(e int,
- f int ){
+# func main(e int,
+#  f int ){
 
-  type 
-  a int
-  const a,
-  b=3,
-  4;
-  ;
-  ;
-  fmt.Println(a)
+#   type 
+#   a int
+#   const a,
+#   b=3,
+#   4;
+#   ;
+#   ;
+#   fmt.Println(a)
 
-  label:
-  a+=7
+#   label:
+#   a+=7
 
-  if a==4 {}               else {d=4}
-  switch i {
-    case 1:  fmt.Println("one")
-    case 2:
-        fmt.Println("two")
-    case 3:
-        fmt.Println("three")
-        fmt.Println("three")
+#   if a==4 {}               else {d=4}
+#   switch i {
+#     case 1:  fmt.Println("one")
+#     case 2:
+#         fmt.Println("two")
+#     case 3:
+#         fmt.Println("three")
+#         fmt.Println("three")
 
-    }
-    e:=[5]int{1,2,3,4,5}
+#     }
+#     e:=[5]int{1,2,3,4,5}
 
-    a='c'
+#     a='c'
 
   
-}
+# }
 
-"""
+# """
 yacc.parse(program, tracking = True)
+
