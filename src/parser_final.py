@@ -240,6 +240,8 @@ class Node:
 def p_Start(p):
   '''Start : SourceFile'''
   print "Succesfully completed"
+  # p[0]=Node("void",[p[1]],{"label":"Start"})
+
 
 
 def p_SourceFile(p):
@@ -248,6 +250,7 @@ def p_SourceFile(p):
           | PackageClause terminator RepeatTopLevelDecl
   '''
   #print "here Sourcefile"
+  # p[0]=Node("void",[p[1]],{"label":"Start"})
 
 
 def p_PackageClause(p):
@@ -258,12 +261,17 @@ def p_PackageName(p):
   'PackageName : ID '
 
 def p_RepeatTopLevelDecl(p):
-  '''RepeatTopLevelDecl : TopLevelDecl RepeatTopLevelDecl
+  '''RepeatTopLevelDecl : TopLevelDecl RepeatTerminator RepeatTopLevelDecl
+  						| TopLevelDecl Repeatnewline RepeatTopLevelDecl
+  						| TopLevelDecl 
+  						| TopLevelDecl RepeatTerminator Repeatnewline RepeatTopLevelDecl
                       | empty'''
 
+
+
 def p_TopLevelDecl(p):
-  '''TopLevelDecl : Declaration Repeat_multi_newline
-                  | FunctionDecl Repeat_multi_newline'''
+  '''TopLevelDecl : Declaration 
+                  | FunctionDecl '''
 
 
 def p_StatementList(p):
@@ -566,6 +574,8 @@ def p_DeferStmt(p):
 def p_ExpressionList(p):
     ''' ExpressionList : Expression
                        | Expression COMMA Repeat_multi_newline ExpressionList '''
+    
+
 
 def p_Expression(p):
     '''Expression : Expression LOR Repeat_multi_newline Term1
@@ -792,8 +802,14 @@ def p_Argument(p):
 
 def p_IdentifierList(p):
     '''IdentifierList : ID 
-                    |  ID COMMA Repeat_multi_newline IdentifierList '''
-
+                    |  IdentifierList COMMA Repeat_multi_newline ID 
+    '''
+    if(len(p)==2):
+    	p[0]=Node("void",[Node("void",[],{"label":p[1]})],{"label":"IdentifierList"})
+    else:
+    	p[1].children.append(Node("void",[],{"label":p[4]}))
+    	p[0]=p[1]
+    print p[0].children
 
 
 #-----------------------------------------------------------
@@ -806,9 +822,12 @@ def p_error(p):
 import ply.yacc as yacc
 yacc.yacc()
 
-filename=argv[1]
-f=open(filename,'r+')
-program=f.read().strip()
+input_filename=argv[1]
+infile=open(input_filename,'r+')
+program=infile.read().strip()
+
+output_filename=argv[2]
+outfile=open(output_filename,'w+')
 # program="""package main
 
 
@@ -852,5 +871,12 @@ program=f.read().strip()
 # }
 
 # """
+program="""package main
+
+var a,b,c=1,2,3;;;
+
+var c,d,e=3;
+
+"""
 yacc.parse(program, tracking = True)
 
