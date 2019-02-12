@@ -185,12 +185,10 @@ def t_ID( t):
 def t_MULTICOMMENT( t):
     r'/\*(.|\n)*?\*/'
     t.lexer.lineno += t.value.count('\n')
-    return t
 
 def t_COMMENT( t):
     r'//.*\n'
     t.lexer.lineno += 1
-    return t
 
 def t_newline( t):
     r'\n+'
@@ -329,13 +327,18 @@ def p_StatementList(p):
                      | empty 
        '''
 
-# def p_StatementList(p):
-#     '''StatementList : Statement RepeatTerminator  StatementList
-#              | Repeatnewline StatementList
-#                      | Statement
-#                      | empty 
-#        '''
-
+    if(len(p)==2):
+        if(p[1]):
+			p[1].leaf["label"] = "StatementList"
+			p[0]=p[1]
+        else:
+        	p[0]=Node("void",[],{"label":"StatementList"})
+    if(len(p)==5):
+        p[4].children=[p[1]]+p[4].children
+        p[0]=p[4]
+    elif(len(p)==4):
+        p[3].children=[p[1]]+p[3].children
+        p[0]=p[3]
 
 #Add Declaration
 def p_Statement(p):
@@ -352,6 +355,8 @@ def p_Statement(p):
                  | ForStmt     
                  | DeferStmt   
     '''
+
+    p[0]=Node("void",[],{"label":"Statement"})
 
 # Declaration   = ConstDecl | TypeDecl | VarDecl .
 # I am also adding FunctionDecl also part of it, though is actually part of Top Level Decl
@@ -426,13 +431,24 @@ def p_VarSpec(p):
 def p_FunctionDecl(p):
     ''' FunctionDecl : FunctionMarker  FunctionBody
                       | FunctionMarker '''
+    if(len(p)==3):
+    	p[2].leaf["label"]="FunctionBody"
+    	p[1].children=p[1].children+[p[2]]
+    	p[1].leaf["label"]="Function"
+    	p[0]=p[1]
+    else:
+    	p[1].leaf["label"]="Function"
+    	p[0]=p[1]
 
 def p_FunctionMarker(p):
     ''' FunctionMarker : FUNC Repeat_multi_newline FunctionName Signature '''
+    p[0]=Node("void",[Node("void",[],{"label":"func"}),p[3],p[4]],{"label":"marker"})
 
 
 def p_FunctionName(p):
     ''' FunctionName : ID '''
+    p[0]=Node("void",[],{"label":p[1]})
+
 #Didn't include variadic functions, it is defined by ... below
 
 #  Signature      = Parameters [ Result ] .
@@ -441,27 +457,46 @@ def p_FunctionName(p):
 #  ParameterList  = ParameterDecl { "," ParameterDecl } .
 #  ParameterDecl = [ IdentifierList ] [ "..." ] Type .
 
+
+#TODO: Handle Results cateogary of Signature.Only 1 handled
 def p_Signature(p):
     ''' Signature : Parameters 
                   | Parameters Result '''
+    p[0]=p[1]
 
 
 # Parameters can't end in ,
 def p_Parameters(p):
     ''' Parameters : LPAREN Repeat_multi_newline RPAREN
                    | LPAREN Repeat_multi_newline ParameterList RPAREN '''
+    if(len(p)==4):
+    	p[0]=Node("void",[Node("void",[],{"label":"("}),Node("void",[],{"label":")"})],{"label":"Arguments"})
+    else:
+  		p[0]=Node("void",[Node("void",[],{"label":"("})]+p[3].children+[Node("void",[],{"label":")"})],{"label":"Arguments"})  	
 
 
 def p_ParameterList(p):
     ''' ParameterList : ParameterDecl RepeatParameterDecl '''
+    p[2].children=[p[1]]+p[2].children
+    p[2].leaf["label"]="ParameterList"
+    p[0]=p[2]
 
 def p_RepeatParameterDecl(p):
     ''' RepeatParameterDecl : COMMA Repeat_multi_newline ParameterDecl RepeatParameterDecl
                             | empty '''
+    if(len(p)==2):
+    	p[0]=Node("void",[],{"label":"RepeatDecl"})
+    else:
+    	p[4].children=[p[3]]+p[4].children
+    	p[0]=p[4]
 
 def p_ParameterDecl(p):
     ''' ParameterDecl : ID Types
                       | Types '''
+    if(len(p)==3):
+    	p[0]=Node("void",p[2].children,{"label":p[1]+" "+str(p[2].leaf["label"])})
+    else:
+  		p[0]=Node("void",p[1].children,{"label":str(p[2].leaf["label"])})  	
 
 
 def p_Result(p):
@@ -473,6 +508,7 @@ def p_Result(p):
 
 def p_FunctionBody(p):
     ''' FunctionBody : Block '''
+    p[0]=p[1]
 
 
 
@@ -575,6 +611,11 @@ def p_GotoStmt(p):
 def p_Block(p):
     '''Block : LBRACE Marker StatementList RBRACE
         | LBRACE Repeatnewline Marker StatementList RBRACE'''
+    if(len(p)==5):
+    	p[0]=Node("void",[Node("void",[],{"label":"{"}),p[3],Node("void",[],{"label":"}"})],{"label":"Block"})
+    else:
+    	p[0]=Node("void",[Node("void",[],{"label":"{"}),p[4],Node("void",[],{"label":"}"})],{"label":"Block"})
+
 
 def p_Marker(p):
     '''Marker : empty'''
@@ -651,10 +692,10 @@ def p_Expression(p):
     '''Expression : Expression LOR Repeat_multi_newline Term1
                   | Term1 '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Expression"
+        p[1].leaf["label"] = "Expression"
         p[0]= p[1]
     else:
-        p[4].leaf["value"] = "Expression"
+        p[4].leaf["label"] = "Expression"
         p[0]=Node("void",[p[1], Node("void",[],{"label":p[2]}), p[4] ],{"label":"Expression"})
     
    
@@ -663,11 +704,11 @@ def p_Term1(p):
     '''Term1 : Term1 LAND Repeat_multi_newline Term2
              | Term2 '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Term1"
+        p[1].leaf["label"] = "Term1"
         p[0] = p[1]
     else:
-        p[4].leaf["value"] = "Expression"
-        p[1].leaf["value"] = "Expression"
+        p[4].leaf["label"] = "Expression"
+        p[1].leaf["label"] = "Expression"
         p[0]=Node("void",[p[1], Node("void",[],{"label":p[2]}), p[4] ],{"label":"Term1"})
 
 
@@ -677,11 +718,11 @@ def p_Term2(p):
     '''Term2 : Term2 Relop Repeat_multi_newline Term3
              | Term3 '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Term2"
+        p[1].leaf["label"] = "Term2"
         p[0] = p[1]
     else:
-        p[4].leaf["value"] = "Expression"
-        p[1].leaf["value"] = "Expression"
+        p[4].leaf["label"] = "Expression"
+        p[1].leaf["label"] = "Expression"
         p[0]=Node("void",[p[1], p[2], p[4] ],{"label":"Term2"})
 
 
@@ -704,11 +745,11 @@ def p_Term3(p):
              | Term3 XOR Repeat_multi_newline Term4
              | Term4 '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Term3"
+        p[1].leaf["label"] = "Term3"
         p[0] = p[1]
     else:
-        p[4].leaf["value"] = "Expression"
-        p[1].leaf["value"] = "Expression"
+        p[4].leaf["label"] = "Expression"
+        p[1].leaf["label"] = "Expression"
         p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term3"})
 
 #Similary for *, /
@@ -722,11 +763,11 @@ def p_Term4(p):
              | Term4 ANDNOT Repeat_multi_newline Term5
              | Term5 '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Term4"
+        p[1].leaf["label"] = "Term4"
         p[0] = p[1]
     else:
-        p[4].leaf["value"] = "Expression"
-        p[1].leaf["value"] = "Expression"
+        p[4].leaf["label"] = "Expression"
+        p[1].leaf["label"] = "Expression"
         p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term4"})
 
 
@@ -735,10 +776,10 @@ def p_Term5(p):
     '''Term5 : LPAREN Repeat_multi_newline Expression RPAREN
              | UnaryExp '''
     if(len(p)==2):
-        p[1].leaf["value"] = "Term5"
+        p[1].leaf["label"] = "Term5"
         p[0] = p[1]
     else:
-        p[3].leaf["value"] = "Term5"
+        p[3].leaf["label"] = "Term5"
         p[0] = p[3]
 
 
@@ -746,7 +787,7 @@ def p_UnaryExp(p):
     '''UnaryExp : PrimaryExpr
                 | UnaryOp Repeat_multi_newline UnaryExp '''
     if(len(p)==2):
-        p[1].leaf["value"] = "UnaryExp"
+        p[1].leaf["label"] = "UnaryExp"
         p[0] = p[1]
     else:
         p[0]=Node("void",p[1].children + p[3].children,{"label":"UnaryExp"})
@@ -777,7 +818,7 @@ def p_PrimaryExpr(p):
                    | PrimaryExpr Index 
                    | PrimaryExpr Arguments '''
     if(len(p)==2):
-        p[1].leaf["value"] = "PrimaryExpr"
+        p[1].leaf["label"] = "PrimaryExpr"
         p[0] = p[1]
     else:
         p[0]=Node("void",[p[1], p[2]],{"label":"PrimaryExp"})
@@ -787,7 +828,7 @@ def p_PrimaryExpr(p):
 def p_Operand(p):
     ''' Operand : Literal 
                 | OperandName '''
-    p[1].leaf["value"] = "Operand"
+    p[1].leaf["label"] = "Operand"
     p[0] = p[1]
 
 
@@ -795,7 +836,7 @@ def p_Operand(p):
 def p_Literal(p):
     ''' Literal : BasicLit
                 | CompositeLit '''
-    p[1].leaf["value"] = "Literal"
+    p[1].leaf["label"] = "Literal"
     p[0] = p[1]
 
 
@@ -804,7 +845,7 @@ def p_BasicLit(p):
     ''' BasicLit : intLit 
                  | floatLit
                  | stringLit'''
-    p[1].leaf["value"] = "BasicLit"
+    p[1].leaf["label"] = "BasicLit"
     p[0] = p[1]
 
 # int_lit     = decimal_lit | octal_lit | hex_lit .
@@ -864,7 +905,7 @@ def p_Mytypes(p):
     p[0]=Node("void",[],{"label":p[1]})
 
 
-def p_Types1(p):
+def p_Types(p):
     ''' Types : Mytypes 
               | TypeLit
               | OperandName'''
@@ -880,12 +921,11 @@ def p_Typelit(p):
     			| ArrayType
     			| PointerType
     			'''
-    p[1].leaf["label"] = "TypeLit"
     p[0] = p[1]
 
 def p_PointerType(p):
     "PointerType : TIMES Types"
-    p[0]=Node("void",[], {"label":p[1] + p2.leaf["value"]})
+    p[0]=Node("void",[], {"label":p[1] + p[2].leaf["label"]})
     
 
 
@@ -925,7 +965,7 @@ def p_FieldDecl(p):
 #ArrayType   = "[" ArrayLength "]" ElementType .
 def p_ArrayType(p):
     ''' ArrayType :  LBRACKET Repeat_multi_newline ArrayLength RBRACKET Types'''
-    p[0]=Node("void",[ Node("void",[],{"label" : "[" + p[3].leaf["value"]+ "]" }), p[5]], {"label": "ArrayType"})
+    p[0]=Node("void",[ Node("void",[],{"label" : "[" + str(p[3].leaf["label"])+ "]" }), p[5]], {"label": "ArrayType"})
 
 
 def p_ArrayLength(p):
