@@ -824,7 +824,7 @@ def p_Term2(p):
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
         # p[0]=Node("void",[p[1], p[2], p[4] ],{"label":"Term2"})
-        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2].leaf["label"]})],{"label":"Term2"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2].children[0].leaf["label"]})],{"label":"Term2"})
 
 
 def p_Relop(p):
