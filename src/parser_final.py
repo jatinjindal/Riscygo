@@ -502,9 +502,9 @@ def p_ParameterDecl(p):
     ''' ParameterDecl : ID Types
                       | Types '''
     if(len(p)==3):
-    	p[0]=Node("void",p[2].children,{"label":p[1]+" "+str(p[2].leaf["label"])})
+    	p[0]=Node("void",p[2].children[0].children,{"label":p[1]+" "+str(p[2].children[0].leaf["label"])})
     else:
-  		p[0]=Node("void",p[1].children,{"label":str(p[2].leaf["label"])})  	
+  		p[0]=Node("void",p[1].children[0].children,{"label":str(p[2].children[0].leaf["label"])})  	
 
 
 def p_Result(p):
@@ -1032,8 +1032,7 @@ def p_Typelit(p):
 
 def p_PointerType(p):
     "PointerType : TIMES Types"
-    p[0]= Node("void",[Node("void", [], {"label":p[1] + p[2].children[0].leaf["label"]})], {"Label":"PointerType"} )
-    
+    p[0]= Node("void",[Node("void", p[2].children[0].children, {"label":p[1] + p[2].children[0].leaf["label"]})], {"Label":"PointerType"} )
 
 
 
@@ -1041,8 +1040,8 @@ def p_StructType(p):
     ''' StructType : STRUCT Repeat_multi_newline LBRACE Repeat_multi_newline  RepeatFieldDecl  RBRACE '''
     
     p[5].leaf["label"] = "Fields"
-    p[0]=Node("void",[ Node("void",[],{"label":"struct"})] + p[5].children,{"label":"StructType"})
-        
+    p[0]=Node("void",[Node("void", p[5].children,{"label":"struct"})],{"label":"rub"})
+
 
 def p_RepeatFieldDecl(p):
     ''' RepeatFieldDecl :  FieldDecl terminator RepeatFieldDecl
@@ -1072,7 +1071,7 @@ def p_FieldDecl(p):
 #ArrayType   = "[" ArrayLength "]" ElementType .
 def p_ArrayType(p):
     ''' ArrayType :  LBRACKET Repeat_multi_newline ArrayLength RBRACKET Types'''
-    p[0]=Node("void",[ Node("void",[],{"label" : "[" + str(p[3].children[0].leaf["label"])+ "]" }), p[5]], {"label": "ArrayType"})
+    p[0]=Node("void",[Node("void",[ Node("void",[],{"label" : "[" + str(p[3].children[0].leaf["label"])+ "]" })]+p[5].children, {"label": "ArrayType"})],{"label":"Types"})
 
 
 def p_ArrayLength(p):
