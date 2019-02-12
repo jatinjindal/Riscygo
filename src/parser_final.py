@@ -355,8 +355,8 @@ def p_Statement(p):
                  | ForStmt     
                  | DeferStmt   
     '''
-
-    p[0]=Node("void",[],{"label":"Statement"})
+    p[1].leaf["label"] = "Statement"
+    p[0]= p[1]
 
 # Declaration   = ConstDecl | TypeDecl | VarDecl .
 # I am also adding FunctionDecl also part of it, though is actually part of Top Level Decl
@@ -370,15 +370,20 @@ def p_Declaration(p):
 # ConstDecl = "const" ( ConstSpec | "(" { ConstSpec ";" } ")" ) .
 def p_ConstDecl(p):
     ''' ConstDecl : CONST ConstSpec'''
-
+    p[2].leaf["label"] = "ConstDecl"
+    p[2].children = [ Node("void",[],{"label":"const"}) ] + p[2].children
+    p[0] = p[2]
 
 # ConstSpec      = IdentifierList [ [ Type ] "=" ExpressionList ] .
 ##Again Identifier Problem but becuase of const no problem
 def p_ConstSpec(p):
     ''' ConstSpec : IdentifierList
                   | IdentifierList EQUALS ExpressionList'''
-
-
+    if len(p)==2:
+        p[0] = Node("void", [p[1]], {"label": "ConstSpec"})
+    else:
+        p[0] = Node("void", [p[1], Node("void",[], {"label": "="}), p[3]] , {"label": "ConstSpec"})
+        
 
 
 
@@ -442,7 +447,7 @@ def p_FunctionDecl(p):
 
 def p_FunctionMarker(p):
     ''' FunctionMarker : FUNC Repeat_multi_newline FunctionName Signature '''
-    p[0]=Node("void",[Node("void",[],{"label":"func"}),p[3],p[4]],{"label":"marker"})
+    p[0]=Node("void",[Node("void",[],{"label":"func"}),p[3]]+p[4].children,{"label":"marker"})
 
 
 def p_FunctionName(p):
@@ -462,7 +467,10 @@ def p_FunctionName(p):
 def p_Signature(p):
     ''' Signature : Parameters 
                   | Parameters Result '''
-    p[0]=p[1]
+    if(len(p)==2):
+    	p[0]=Node("void",[p[1]],{"label":"Signature"})
+    else:
+    	p[0]=Node("void",[p[1],p[2]],{"label":"Signature"})
 
 
 # Parameters can't end in ,
@@ -472,7 +480,7 @@ def p_Parameters(p):
     if(len(p)==4):
     	p[0]=Node("void",[Node("void",[],{"label":"("}),Node("void",[],{"label":")"})],{"label":"Arguments"})
     else:
-  		p[0]=Node("void",[Node("void",[],{"label":"("})]+p[3].children+[Node("void",[],{"label":")"})],{"label":"Arguments"})  	
+  		p[0]=Node("void",p[3].children,{"label":"Arguments"})  	
 
 
 def p_ParameterList(p):
@@ -502,6 +510,8 @@ def p_ParameterDecl(p):
 def p_Result(p):
     ''' Result : Parameters
                | Types '''
+    p[1].leaf["label"]="Return Values"
+    p[0]=p[1]
 
 
 
@@ -536,11 +546,11 @@ def p_Repeat_multi_newline(p):
 
 def p_LabeledStmt(p):
     '''LabeledStmt : Label COLON Repeat_multi_newline Statement'''
-
+    p[0] = Node( "void", p[1].children + [p[4]], {"label": "LabeledStmt"})
 
 def p_Label(p):
     '''Label : ID'''
-
+    p[0] = Node("void",[Node("void",[],{"label":p[1] })], {"label": "Label"})
 
 
 # SimpleStmt = EmptyStmt | ExpressionStmt | SendStmt | IncDecStmt | Assignment | ShortVarDecl .
@@ -558,16 +568,22 @@ def p_SimpleStmt(p):
         | ShortVarDecl
         | IncDecStmt
         | ExpressionStmt'''
+    p[0] = p[1]
+    p[0].leaf["label"] = "SimpleStmt"
 
 # def p_emptyStmt(p):
 #     '''EmptyStmt : empty'''
 
 def p_ExpressionStmt(p):
     '''ExpressionStmt : Expression'''
+    p[0] = p[1]
+    p[0].leaf["label"] = "ExpressionStmt"
+
 
 def p_IncDecStmt(p):
     '''IncDecStmt : Expression INCR 
         | Expression DECR  '''
+    p[0] = Node("void", [p[1]] + [Node("void",[],{"label":p[2]})]  ,{"label":"IncDecStmt"} )
 
 # I am self defining this assignment operator due to lack in our grammar
 def p_AssignOp(p):
@@ -583,38 +599,64 @@ def p_AssignOp(p):
             | XOREQUAL 
             | ANDNOTEQUAL 
     '''
+    p[0] = Node( "void", [Node("void", [], {"label":p[1]})], {"label":"AssignOp"})
 
 #I am currently following official go language and not including IdentifierList=ExpressionList
 def p_Assignments(p):
     '''Assignment : ExpressionList AssignOp  Repeat_multi_newline ExpressionList
                 | ExpressionList  EQUALS  Repeat_multi_newline ExpressionList'''
+    if p[2] == "=":
+        p[0] = Node( "void", [p[1], Node("void", [], {"label":p[2]}), p[4] ], {"label":"Assignment"})
+    else:
+        p[0] = Node( "void", [p[1], p[2].children[0], p[4] ], {"label":"AssignOp"})
+
+
 
 def p_ShortVarDecl(p):
     '''ShortVarDecl : ExpressionList AUTOASIGN Repeat_multi_newline ExpressionList'''
+    p[0] = Node( "void", [p[1], Node("void", [], {"label":p[2]}), p[4] ], {"label":"Assignment"})
+
 
 def p_ReturnStmt(p):
     '''ReturnStmt : RETURN
                 | RETURN ExpressionList'''
+    if len(p)==2:
+        p[0] = Node("void", [Node("void",[],{"label":"return"})], {"label":"ReturnStmt"} )
+    else:
+        p[0] = Node("void", [Node("void",[],{"label":"return"}), p[2]], {"label":"ReturnStmt"} )
+        
 
 def p_BreakStmt(p):
     '''BreakStmt : BREAK 
                 | BREAK Label'''
+    if len(p)==2:
+        p[0] = Node("void", [Node("void",[],{"label":"break"})], {"label":"BreakStmt"} )
+    else:
+        p[0] = Node("void", [Node("void",[],{"label":"break"}), p[2].children[0]], {"label":"BreakStmt"} )
+        
 
 # Check for conflicts here between continueStmt and BreakStmt
 def p_ContinueStmt(p):
     '''ContinueStmt : CONTINUE
                     | CONTINUE Label'''
+    if len(p)==2:
+        p[0] = Node("void", [Node("void",[],{"label":"continue"})], {"label":"ContinueStmt"} )
+    else:
+        p[0] = Node("void", [Node("void",[],{"label":"continue"}), p[2].children[0]], {"label":"ContinueStmt"} )
+
 
 def p_GotoStmt(p):
     '''GotoStmt : GOTO Label'''
+    p[0] = Node("void", [Node("void",[],{"label":"goto"}), p[2].children[0]], {"label":"GotoStmt"} )
+
 
 def p_Block(p):
     '''Block : LBRACE Marker StatementList RBRACE
         | LBRACE Repeatnewline Marker StatementList RBRACE'''
     if(len(p)==5):
-    	p[0]=Node("void",[Node("void",[],{"label":"{"}),p[3],Node("void",[],{"label":"}"})],{"label":"Block"})
+    	p[0]=Node("void",[p[3]],{"label":"Block"})
     else:
-    	p[0]=Node("void",[Node("void",[],{"label":"{"}),p[4],Node("void",[],{"label":"}"})],{"label":"Block"})
+    	p[0]=Node("void",[p[4]],{"label":"Block"})
 
 
 def p_Marker(p):
@@ -627,29 +669,62 @@ def p_IfStmt(p):
             | IF Repeat_multi_newline SimpleStmt terminator Expression Block
             | IF Repeat_multi_newline SimpleStmt terminator Expression Block ELSE IfStmt
             | IF Repeat_multi_newline SimpleStmt terminator Expression Block ELSE Block'''
+    if len(p)==5:
+        p[0] = Node("void", [Node("void",[],{"label":"if"}), p[3], p[4]], {"label":"IfStmt"} )
+    elif (len(p)==7 and p[4]==";"):
+        p[0] = Node("void", [Node("void",[],{"label":"if"}),p[3], p[5], p[6]], {"label":"IfStmt"} )
+    elif(len(p)==7):
+        p[0] = Node("void", [Node("void",[],{"label":"if"}), p[3], p[4], Node("void",[],{"label":"else"}), p[6]], {"label":"IfStmt"} )
+    else:
+        p[0] = Node("void", [Node("void",[],{"label":"if"}), p[3], p[5], p[6], Node("void",[],{"label":"else"}), p[8]], {"label":"IfStmt"} )
+    
 
 def p_SwitchStmt(p):
     '''SwitchStmt : ExprSwitchStmt'''
+    p[1].leaf["label"] = "SwitchStmt"
 
 # I have followed Go Specs and made Expression optional
 def p_ExprSwitchStmt(p):
     '''ExprSwitchStmt : SWITCH Repeat_multi_newline LBRACE Repeat_multi_newline RepeatExprCaseClause RBRACE
                     | SWITCH Repeat_multi_newline Expression LBRACE Repeat_multi_newline RepeatExprCaseClause RBRACE'''
+    if(len(p)==7):
+        p[0] = Node("void", [Node("void",[],{"label":"switch"}), p[5]], {"label":"ExprSwitchStmt"})
+    else:
+        p[0] = Node("void", [Node("void",[],{"label":"switch"}),p[3], p[6]], {"label":"ExprSwitchStmt"})
+        
 
 def p_RepeatExprCaseClause(p):
     '''RepeatExprCaseClause : ExprCaseClause RepeatExprCaseClause
                             | empty'''
+    if(len(p)==2):
+        if(p[1]):
+            p[2].children= [p[1]] + p[2].children
+            p[0] = p[2]
+        else:
+            p[0]= Node("void",[],{"label":"ExprCaseClause"})
+    
 def p_ExprCaseClause(p):
     '''ExprCaseClause : ExprSwitchCase COLON Repeat_multi_newline StatementList'''
+    p[0] = Node("void",p[1].children + [p[4]], {"label":"ExprCaseClause"} )
 
 def p_ExprSwitchCase(p):
     '''ExprSwitchCase : CASE Repeat_multi_newline Expression
                     | DEFAULT  Repeat_multi_newline''' 
+    if(len(p) == 3):
+        p[0] = Node("void",[Node("void",[],{"label":"default"}) ], {"label":"ExprSwitchCase"})
+    else:
+        p[0] = Node("void",[Node("void",[],{"label":"case"}), p[3]], {"label":"ExprSwitchCase"})
+    
 
 def p_ForStmt(p):
     '''ForStmt : FOR Repeat_multi_newline Block
             | FOR Repeat_multi_newline Condition Block
             | FOR Repeat_multi_newline ForClause Block'''
+    if(len(p) == 4):
+        p[0] = Node("void",[Node("void",[],{"label":"for"}), p[3]], {"label":"ForStmt"})
+    else:
+        p[0] = Node("void",[Node("void",[],{"label":"for"}), p[3], p[4]], {"label":"ForStmt"})
+    
 
 def p_ForClause(p):
     '''ForClause : terminator terminator
@@ -660,21 +735,45 @@ def p_ForClause(p):
                 | InitStmt terminator terminator PostStmt
                 | terminator Condition terminator PostStmt
                 | InitStmt terminator Condition terminator PostStmt'''
+    if(len(p)==3):
+        p[0] = Node("void", [Node("void",[],{"label":"InitStmt"}), Node("void",[],{"label":"Condition"}), Node("void",[],{"label":"PostStmt"})], {"label":"ForClause"})
+    elif(len(p)==4):
+        if( p[2] == ";" and p[3] == ";"):
+            p[0] = Node("void", [p[1], Node("void",[],{"label":"Condition"}), Node("void",[],{"label":"PostStmt"})], {"label":"ForClause"})
+        elif(p[1] == ";" and p[3] == ";"):
+            p[0] = Node("void", [Node("void",[],{"label":"InitStmt"}), p[2], Node("void",[],{"label":"PostStmt"})], {"label":"ForClause"})
+        else:
+            p[0] = Node("void", [Node("void",[],{"label":"InitStmt"}), Node("void",[],{"label":"Condition"}), p[3]], {"label":"ForClause"})
+    elif (len(p) == 5):
+        if( p[2] == ";" and p[4] == ";"):
+            p[0] = Node("void", [p[1], p[3], Node("void",[],{"label":"PostStmt"})], {"label":"ForClause"})
+        elif(p[2] == ";" and p[3] == ";"):
+            p[0] = Node("void", [p[1], Node("void",[],{"label":"Condition"}), p[4]], {"label":"ForClause"})
+        else:
+            p[0] = Node("void", [Node("void",[],{"label":"InitStmt"}), p[2], p[4]], {"label":"ForClause"})
+    else:
+        p[0] = Node("void", [p[1], p[3], p[5]], {"label": "ForClause"})   
+
 
 def p_InitStmt(p):
     'InitStmt : SimpleStmt'
+    p[1].leaf["label"] = "InitStmt"
+    p[0] = p[1]
 
 def p_PostStmt(p):
     'PostStmt : SimpleStmt'
+    p[1].leaf["label"] = "PostStmt"
+    p[0] = p[1]
 
 def p_Condition(p):
     'Condition : Expression'
-
+    p[1].leaf["label"] = "Condition"
+    p[0] = p[1]
 
 
 def p_DeferStmt(p):
     '''DeferStmt : DEFER PrimaryExpr Arguments'''
-
+    p[0] = Node("void", [Node("void",[],{"label":"defer"})] + p[2].children + [p[3]], {"label":"DeferStmt"})
 #-----------------------------------------------------------
 
 def p_ExpressionList(p):
@@ -696,7 +795,7 @@ def p_Expression(p):
         p[0]= p[1]
     else:
         p[4].leaf["label"] = "Expression"
-        p[0]=Node("void",[p[1], Node("void",[],{"label":p[2]}), p[4] ],{"label":"Expression"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2]})],{"label":"Expression"})
     
    
 
@@ -709,7 +808,8 @@ def p_Term1(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
-        p[0]=Node("void",[p[1], Node("void",[],{"label":p[2]}), p[4] ],{"label":"Term1"})
+        # p[0]=Node("void",[p[1], Node("void",[],{"label":p[2]}), p[4] ],{"label":"Term1"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2]})],{"label":"Term1"})
 
 
 
@@ -723,7 +823,8 @@ def p_Term2(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
-        p[0]=Node("void",[p[1], p[2], p[4] ],{"label":"Term2"})
+        # p[0]=Node("void",[p[1], p[2], p[4] ],{"label":"Term2"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2].leaf["label"]})],{"label":"Term2"})
 
 
 def p_Relop(p):
@@ -733,7 +834,7 @@ def p_Relop(p):
               | GE 
               | EQ 
               | NE '''
-    p[0]=Node("void",[p[1]],{"label":p[1]})
+    p[0]=Node("void",[ Node("void",[],{"label":p[1]}) ],{"label":"Relop"})
 
 
 
@@ -750,7 +851,9 @@ def p_Term3(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
-        p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term3"})
+        # p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term3"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2]})],{"label":"Term3"})
+
 
 #Similary for *, /
 def p_Term4(p):
@@ -768,7 +871,8 @@ def p_Term4(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
-        p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term4"})
+        # p[0]=Node("void",[p[1], Node("void",[p[2]],{"label":p[2]}), p[4] ],{"label":"Term4"})
+        p[0]=Node("void",[Node("void",p[1].children + p[4].children,{"label":p[2]})],{"label":"Term4"})
 
 
 
@@ -799,7 +903,7 @@ def p_UnaryOp(p):
                | LNOT 
                | TIMES 
                | AND'''
-    p[0]=Node("void",[p[1]],{"label":p[1]})
+    p[0]=Node("void",[ Node("void",[],{"label":p[1]}) ],{"label":"UnaryOp"})
 
 
 # // PrimaryExpr =
@@ -821,7 +925,7 @@ def p_PrimaryExpr(p):
         p[1].leaf["label"] = "PrimaryExpr"
         p[0] = p[1]
     else:
-        p[0]=Node("void",[p[1], p[2]],{"label":"PrimaryExp"})
+        p[0]=Node("void",p[1].children + [p[2]],{"label":"PrimaryExp"})
 
 
 # Operand = Literal | OperandName | "(" Expression ")" .
@@ -851,20 +955,20 @@ def p_BasicLit(p):
 # int_lit     = decimal_lit | octal_lit | hex_lit .
 def p_intLit(p):
     ''' intLit : INTEGER'''
-    p[0]=Node("void",[],{"label":p[1]})
+    p[0]=Node("void", [Node("void",[],{"label":p[1]} )] , {"label": "Int"})
 
 
 # float_lit = decimals "." [ decimals ] [ exponent ] |decimals exponent |"." decimals [ exponent ] .
 def p_floatLit(p):
     ''' floatLit : FLOAT'''
-    p[0]=Node("void",[],{"label":p[1]})
+    p[0]=Node("void", [Node("void",[],{"label":p[1]} )] , {"label": "Float"})
 
 #string_lit = raw_string_lit | interpreted_string_lit .
 #may lead to conflict
 def p_stringLit(p):
     ''' stringLit : STRINGVAL 
                   | CHARACTER'''
-    p[0]=Node("void",[],{"label":p[1]})
+    p[0]=Node("void", [Node("void",[],{"label":p[1]} )] , {"label": "String"})
 
 
 # CompositeLit  = LiteralType LiteralValue .
@@ -902,13 +1006,15 @@ def p_Mytypes(p):
                 | UINTPTR 
                 | STRING 
                 | ERROR '''
-    p[0]=Node("void",[],{"label":p[1]})
+    p[0]=Node("void",[ Node("void",[], {"label":p[1]})],{"label":"Mytypes"})
 
 
+#should we create a types node as well
 def p_Types(p):
     ''' Types : Mytypes 
               | TypeLit
               | OperandName'''
+    p[1].leaf["label"] = "Types"
     p[0] = p[1]
 # def p_Types2(p):
 # 	'Types : ID'
@@ -921,19 +1027,21 @@ def p_Typelit(p):
     			| ArrayType
     			| PointerType
     			'''
+    p[1].leaf["label"] = "TypeLit"
     p[0] = p[1]
 
 def p_PointerType(p):
     "PointerType : TIMES Types"
-    p[0]=Node("void",[], {"label":p[1] + p[2].leaf["label"]})
+    p[0]= Node("void",[Node("void", [], {"label":p[1] + p[2].children[0].leaf["label"]})], {"Label":"PointerType"} )
     
 
 
 
 def p_StructType(p):
     ''' StructType : STRUCT Repeat_multi_newline LBRACE Repeat_multi_newline  RepeatFieldDecl  RBRACE '''
+    
     p[5].leaf["label"] = "Fields"
-    p[0]=Node("void",[ Node("void",[],{"label":"struct"}) , p[5]],{"label":"Structure"})
+    p[0]=Node("void",[ Node("void",[],{"label":"struct"})] + p[5].children,{"label":"StructType"})
         
 
 def p_RepeatFieldDecl(p):
@@ -944,8 +1052,7 @@ def p_RepeatFieldDecl(p):
                         | empty'''
     if(len(p)==2):
         if(p[1]):
-			p[1].leaf["label"] = "RepeatFieldDecl"
-			p[0]=p[1]
+			p[0]=Node("void",[p[1]],{"label":"RepeatFieldDecl"})
         else:
         	p[0]=Node("void",[],{"label":"RepeatFieldDecl"})
     if(len(p)==5):
@@ -965,12 +1072,12 @@ def p_FieldDecl(p):
 #ArrayType   = "[" ArrayLength "]" ElementType .
 def p_ArrayType(p):
     ''' ArrayType :  LBRACKET Repeat_multi_newline ArrayLength RBRACKET Types'''
-    p[0]=Node("void",[ Node("void",[],{"label" : "[" + str(p[3].leaf["label"])+ "]" }), p[5]], {"label": "ArrayType"})
+    p[0]=Node("void",[ Node("void",[],{"label" : "[" + str(p[3].children[0].leaf["label"])+ "]" }), p[5]], {"label": "ArrayType"})
 
 
 def p_ArrayLength(p):
     ''' ArrayLength : INTEGER '''
-    p[0]=Node("void",[], {"label": p[1]})
+    p[0]=Node("void",[ Node("void",[], {"label": p[1]}) ] , {"label":"ArrayLength"} )
 
 
 #LiteralValue  = "{" [ ElementList [ "," ] ] "}" .
@@ -978,14 +1085,14 @@ def p_LiteralValue(p):
     ''' LiteralValue : LBRACE Repeat_multi_newline  RBRACE
                      | LBRACE Repeat_multi_newline ElementList RBRACE'''
     if len(p) == 4:
-        p[0]=Node("void",[], {"label": "LiteralValue"})
+        p[0]=Node("void",[ Node("void",[],{"label":"empty"}) ], {"label": "LiteralValue"})
     else:
         p[3].leaf["label"] = "LiteralValue"
         p[0] = p[3]
 
 def p_Elementlist(p):
     ''' ElementList : KeyedElement RepeatKeyedElement'''
-    p[0]=Node("void",[p[1]] + p2.children, {"label": "ElementList"})
+    p[0]=Node("void",[p[1]] + p[2].children, {"label": "ElementList"})
 
 
 def p_RepeatKeyedElement(p):
@@ -994,7 +1101,7 @@ def p_RepeatKeyedElement(p):
     if len(p)==2:
         p[0]=Node("void",[], {"label": "RepeatKeyedElement"})
     else:
-        p[4].children = [p[3]] + p4.children
+        p[4].children = [p[3]] + p[4].children
         p[0] = p[4]
 
 #need to remove transitivity
@@ -1017,12 +1124,12 @@ def p_empty(p):
 #OperandName = identifier | QualifiedIdent.
 def p_OperandName(p):
     ''' OperandName : ID '''
-    p[0]=Node("void",[], {"label": p[1]})
+    p[0]=Node("void",[ Node("void",[],{"label":p[1]}) ], {"label": "OperandName"})
 
 
 def p_Selector(p):
     ''' Selector : PERIOD Repeat_multi_newline ID '''
-    p[0]=Node("void",[], {"label": "." + p[3]})
+    p[0]=Node("void",[Node("void",[], {"label": "." + p[3]})], {"label": "Selector"} )
 
 
 def p_Index(p):
@@ -1063,6 +1170,8 @@ program=infile.read().strip()
 output_filename=argv[2]
 outfile=open(output_filename,'w+')
 outfile.write("digraph G{\n")
+
+
 # program="""package main
 
 
