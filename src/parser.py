@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 import argparse
 import re
 import sys
@@ -250,7 +248,7 @@ def p_Start(p):
 
 def p_SourceFile(p):
     '''
-    SourceFile : PackageClause ImportClause RepeatTopLevelDecl
+    SourceFile : RepeatNewline PackageClause ImportClause RepeatTopLevelDecl
     '''
     p[0] = Node("void", [p[1], p[2], p[3]], {"label": "Start"})
 
@@ -1172,6 +1170,8 @@ def p_CompositeLit(p):
 def p_LiteralType(p):
     '''
     LiteralType : ArrayType
+                | StructType
+                | SliceType
     '''
     p[0] = p[1]
 
