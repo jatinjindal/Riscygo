@@ -248,7 +248,7 @@ def p_Start(p):
 
 def p_SourceFile(p):
     '''
-    SourceFile : RepeatNewline PackageClause ImportClause RepeatTopLevelDecl
+    SourceFile : PackageClause ImportClause RepeatTopLevelDecl
     '''
     p[0] = Node("void", [p[1], p[2], p[3]], {"label": "Start"})
 
