@@ -310,9 +310,9 @@ def p_Import(p):
            | STRINGVAL
     '''
     if len(p) == 3:
-        p[0] = Node("void", [Node("void", [], {"label": p[1]}), Node("void", [], {"label": p[2]})], {"label": "Import"})
+        p[0] = Node("void", [Node("void", [], {"label": p[1]}), Node("void", [], {"label": p[2][1:-1]})], {"label": "Import"})
     else:
-        p[0] = Node("void", [Node("void", [], {"label": ""}), Node("void", [], {"label": p[1]})], {"label": "Import"})
+        p[0] = Node("void", [Node("void", [], {"label": ""}), Node("void", [], {"label": p[1][1:-1]})], {"label": "Import"})
 
 
 def p_RepeatTopLevelDecl(p):
@@ -1156,7 +1156,7 @@ def p_stringLit(p):
     stringLit : STRINGVAL
               | CHARACTER
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
+    p[0] = Node("void", [Node("void", [], {"label": p[1][1:-1]})],
                 {"label": "String"})
 
 
