@@ -8,6 +8,7 @@ mkdir output
 
 cd src
 for input in `ls ../tests/input2/`; do
+    echo $input
     rm -f parsetab.{py,pyc}
     rm -f parser.out
     python2 parser.py --output="../output/${input}.dot" "../tests/input2/${input}"

@@ -22,7 +22,8 @@ def dfs(a, lcounter):
     global gcounter
     if a is not None:
         string = ""
-        string = string + "a" + str(lcounter) + " [label=\"" + str(a.leaf["label"]) + "\"];\n"
+        string = string + "a" + str(lcounter) + " [label=\"" + str(
+            a.leaf["label"]) + "\"];\n"
         outfile.write(string)
         string = ""
         for x in a.children:
@@ -285,9 +286,12 @@ def p_ImportStmt(p):
                | IMPORT LPAREN StatementEnd ImportList RPAREN
     '''
     if len(p) == 3:
-        p[0] = Node("void", [Node("void", [], {"label": "import"}), p[2]], {"label": "ImportStmt"})
+        p[0] = Node("void", [Node("void", [], {"label": "import"}), p[2]],
+                    {"label": "ImportStmt"})
     else:
-        p[0] = Node("void", [Node("void", [], {"label": "import"})] + p[4].children, {"label": "ImportStmt"})
+        p[0] = Node("void",
+                    [Node("void", [], {"label": "import"})] + p[4].children,
+                    {"label": "ImportStmt"})
 
 
 def p_ImportList(p):
@@ -310,9 +314,15 @@ def p_Import(p):
            | STRINGVAL
     '''
     if len(p) == 3:
-        p[0] = Node("void", [Node("void", [], {"label": p[1]}), Node("void", [], {"label": p[2][1:-1]})], {"label": "Import"})
+        p[0] = Node("void", [
+            Node("void", [], {"label": p[1]}),
+            Node("void", [], {"label": p[2][1:-1]})
+        ], {"label": "Import"})
     else:
-        p[0] = Node("void", [Node("void", [], {"label": ""}), Node("void", [], {"label": p[1][1:-1]})], {"label": "Import"})
+        p[0] = Node("void", [
+            Node("void", [], {"label": ""}),
+            Node("void", [], {"label": p[1][1:-1]})
+        ], {"label": "Import"})
 
 
 def p_RepeatTopLevelDecl(p):
@@ -509,6 +519,7 @@ def p_FunctionName(p):
 #  ParameterList  = ParameterDecl { "," ParameterDecl } .
 #  ParameterDecl = [ IdentifierList ] [ "..." ] Type .
 
+
 def p_Signature(p):
     '''
     Signature : Parameters
@@ -567,7 +578,7 @@ def p_ParameterDecl(p):
             {"label": p[1] + " " + str(p[2].children[0].leaf["label"])})
     else:
         p[0] = Node("void", p[1].children[0].children,
-                    {"label": str(p[2].children[0].leaf["label"])})
+                    {"label": str(p[1].children[0].leaf["label"])})
 
 
 def p_Result(p):
@@ -695,7 +706,8 @@ def p_FallthroughStmt(p):
     '''
     FallthroughStmt : FALLTHROUGH
     '''
-    p[0] = Node("void", [Node("void", [], {"label": "fallthrough"})], {"label": "FallthroughStmt"})
+    p[0] = Node("void", [Node("void", [], {"label": "fallthrough"})],
+                {"label": "FallthroughStmt"})
 
 
 def p_BreakStmt(p):
@@ -1227,10 +1239,8 @@ def p_SliceType(p):
     SliceType : LBRACKET RBRACKET Types
     '''
     p[0] = Node("void", [
-        Node("void", [
-            Node("void", [],
-                 {"label": "[]"})
-        ] + p[3].children, {"label": "SliceType"})
+        Node("void", [Node("void", [], {"label": "[]"})] + p[3].children,
+             {"label": "SliceType"})
     ], {"label": "Types"})
 
 
@@ -1376,8 +1386,12 @@ def p_Index(p):
 def p_Argument(p):
     '''
     Arguments : LPAREN RepeatNewline ExpressionList RPAREN
+              | LPAREN RepeatNewline RPAREN
     '''
-    p[0] = Node("void", p[3].children, {"label": "Arguments"})
+    if len(p) == 4:
+        p[0] = Node("void", [], {"label": "Arguments"})
+    else:
+        p[0] = Node("void", p[3].children, {"label": "Arguments"})
 
 
 def p_IdentifierList(p):
