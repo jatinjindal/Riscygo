@@ -248,7 +248,7 @@ def p_Start(p):
 
 def p_SourceFile(p):
     '''
-    SourceFile : PackageClause ImportClause RepeatTopLevelDecl
+    SourceFile : RepeatNewline PackageClause ImportClause RepeatTopLevelDecl
     '''
     p[0] = Node("void", [p[1], p[2], p[3]], {"label": "Start"})
 
@@ -1422,7 +1422,7 @@ def p_RepeatNewline(p):
 
 def p_error(p):
     if p:
-        print("Syntax error at '%s'" % p.value)
+        print("Syntax error at lexpos %s:\n%s" % (p.lexpos, p.value))
     else:
         print("Syntax error at EOF")
 
