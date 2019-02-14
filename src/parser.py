@@ -779,7 +779,7 @@ def p_SwitchStmt(p):
     '''
     SwitchStmt : ExprSwitchStmt
     '''
-    p[1].leaf["label"] = "SwitchStmt"
+    p[0] = p[1]
 
 
 def p_ExprSwitchStmt(p):
@@ -787,7 +787,7 @@ def p_ExprSwitchStmt(p):
     ExprSwitchStmt : SWITCH RepeatNewline LBRACE RepeatNewline RepeatExprCaseClause RBRACE
                    | SWITCH RepeatNewline Expression LBRACE RepeatNewline RepeatExprCaseClause RBRACE
     '''
-    if (len(p) == 7):
+    if len(p) == 7:
         p[0] = Node("void", [Node("void", [], {"label": "switch"}), p[5]],
                     {"label": "ExprSwitchStmt"})
     else:
@@ -801,12 +801,11 @@ def p_RepeatExprCaseClause(p):
     RepeatExprCaseClause : ExprCaseClause RepeatExprCaseClause
                          | empty
     '''
-    if (len(p) == 2):
-        if (p[1]):
-            p[2].children = [p[1]] + p[2].children
-            p[0] = p[2]
-        else:
-            p[0] = Node("void", [], {"label": "ExprCaseClause"})
+    if len(p) == 3:
+        p[2].children = [p[1]] + p[2].children
+        p[0] = p[2]
+    else:
+        p[0] = Node("void", [], {"label": "RepeatExprCaseClause"})
 
 
 def p_ExprCaseClause(p):
@@ -861,13 +860,13 @@ def p_ForClause(p):
             Node("void", [], {"label": "PostStmt"})
         ], {"label": "ForClause"})
     elif len(p) == 4:
-        if (p[2] == ";" and p[3] == ";"):
+        if p[2] == ";" and p[3] == ";":
             p[0] = Node("void", [
                 p[1],
                 Node("void", [], {"label": "Condition"}),
                 Node("void", [], {"label": "PostStmt"})
             ], {"label": "ForClause"})
-        elif (p[1] == ";" and p[3] == ";"):
+        elif p[1] == ";" and p[3] == ";":
             p[0] = Node("void", [
                 Node("void", [], {"label": "InitStmt"}), p[2],
                 Node("void", [], {"label": "PostStmt"})
@@ -878,12 +877,12 @@ def p_ForClause(p):
                 Node("void", [], {"label": "Condition"}), p[3]
             ], {"label": "ForClause"})
     elif len(p) == 5:
-        if (p[2] == ";" and p[4] == ";"):
+        if p[2] == ";" and p[4] == ";":
             p[0] = Node("void",
                         [p[1], p[3],
                          Node("void", [], {"label": "PostStmt"})],
                         {"label": "ForClause"})
-        elif (p[2] == ";" and p[3] == ";"):
+        elif p[2] == ";" and p[3] == ";":
             p[0] = Node(
                 "void",
                 [p[1], Node("void", [], {"label": "Condition"}), p[4]],
