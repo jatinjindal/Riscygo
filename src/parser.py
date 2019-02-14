@@ -250,7 +250,7 @@ def p_SourceFile(p):
     '''
     SourceFile : RepeatNewline PackageClause ImportClause RepeatTopLevelDecl
     '''
-    p[0] = Node("void", [p[1], p[2], p[3]], {"label": "Start"})
+    p[0] = Node("void", [p[2], p[3], p[4]], {"label": "Start"})
 
 
 def p_PackageClause(p):
@@ -282,7 +282,7 @@ def p_ImportClause(p):
 def p_ImportStmt(p):
     '''
     ImportStmt : IMPORT Import
-               | IMPORT LPAREN RepeatNewline ImportList RepeatNewline RPAREN
+               | IMPORT LPAREN StatementEnd ImportList RPAREN
     '''
     if len(p) == 3:
         p[0] = Node("void", [Node("void", [], {"label": "import"}), p[2]], {"label": "ImportStmt"})
