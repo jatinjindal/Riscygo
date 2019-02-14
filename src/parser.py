@@ -282,12 +282,12 @@ def p_ImportClause(p):
 def p_ImportStmt(p):
     '''
     ImportStmt : IMPORT Import
-               | IMPORT LPAREN ImportList RPAREN
+               | IMPORT LPAREN RepeatNewline ImportList RepeatNewline RPAREN
     '''
     if len(p) == 3:
         p[0] = Node("void", [Node("void", [], {"label": "import"}), p[2]], {"label": "ImportStmt"})
-    elif len(p) == 5:
-        p[0] = Node("void", [Node("void", [], {"label": "import"})] + p[3].children, {"label": "ImportStmt"})
+    else:
+        p[0] = Node("void", [Node("void", [], {"label": "import"})] + p[4].children, {"label": "ImportStmt"})
 
 
 def p_ImportList(p):
@@ -297,6 +297,8 @@ def p_ImportList(p):
                | Import
     '''
     if len(p) == 2:
+        p[0] = Node("void", [p[1]], {"label": "Imports"})
+    elif len(p) == 3:
         p[0] = Node("void", [p[1]], {"label": "Imports"})
     else:
         p[0] = Node("void", [p[1]] + p[3].children, {"label": "Imports"})
