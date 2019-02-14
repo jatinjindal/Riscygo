@@ -129,3 +129,6 @@ dmypy.json
 output/
 *.swp
 tests/cfg1
+**/*.out
+**/parsetab.py
+**/*.dot
