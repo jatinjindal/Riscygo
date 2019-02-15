@@ -1438,7 +1438,7 @@ def p_RepeatNewline(p):
 
 def p_error(p):
     if p:
-        print("Syntax error at lexpos %s:\n%s" % (p.lexpos, p.value))
+        print("Syntax error at lexpos %s:%s at lineno %s\n" % (p.lexpos, p.value, str(p.lineno)))
     else:
         print("Syntax error at EOF")
 
