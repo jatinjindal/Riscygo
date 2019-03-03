@@ -7,6 +7,26 @@ import ply.yacc as yacc
 
 gcounter, outfile = 0, None
 
+class symtab:
+    def __init__(self,previous=None):
+        self.previous=previous
+        self.data={}
+        self.children={}
+
+class values:
+    def __init__(self,type=None,offset=None,args=None):
+        self.type=type
+        self.offset=offset
+        self.args=args
+
+
+def lookup(table,id,attribute):
+    for key,val in table.data.iteritems():
+        if key == id:
+            return getattr(val,attribute)
+    for options in table.children.iteritems():
+        return lookup(options,id,attribute)
+    return None
 
 class Node:
     def __init__(self, type, children=None, leaf=None):
