@@ -53,6 +53,8 @@ def check_type(type1, type2):
         return 0
     if len(type1) == 1:
         return type1[0] == type2[0]
+    elif type1[0] == 3 and type2[0] == 3:
+        return type1[1]==type2[1]
     elif type1[0] == 2 and type2[0] == 2:
         if type1[1] == type2[1]:
             return check_type(type1[2:], type2[2:])
@@ -348,10 +350,14 @@ def p_Start(p):
     p[0] = p[1]
     dfs(p[0], 0)
     outfile.write("}")
+    print "-"*40
     print "main symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
+    print "typedef_map",typedef_map
+    print "struct_name_map",struct_name_map
+    print "-"*40
 
 
 def p_SourceFile(p):
@@ -658,10 +664,12 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
+    print "-"*40
     print "function symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
+    print "-"*40
     t = lookup(cur_symtab[len(cur_symtab) - 1], p[1].children[1].leaf["label"])
     if t is None:
         cur_symtab[len(cur_symtab) -
@@ -1492,10 +1500,12 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
+    print "-"*40
     print "struct symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
+    print "-"*40
     name=generate_name()
     top=cur_symtab[len(cur_symtab)-1]
     struct_name_map[name]=top
@@ -1640,7 +1650,7 @@ def p_OperandName(p):
                 {"label": "OperandName"})
     else:
         print "Type "+p[1]+" used but not declared"
-
+        exit()
 
 def p_Selector(p):
     '''
