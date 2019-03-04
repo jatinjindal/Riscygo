@@ -335,9 +335,7 @@ def p_Start(p):
     Start : SourceFile
     '''
     print "Succesfully completed."
-    p[0] = p[1]
-    dfs(p[0], 0)
-    outfile.write("}")
+
     print "main symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
@@ -969,11 +967,6 @@ def p_Block(p):
     '''
     p[0] = Node("void", [p[3]], {"label": "Block"})
 
-    top = cur_symtab[len(cur_symtab) - 1]
-    cur_symtab.pop()
-    top.total = cur_offset[len(cur_offset) - 1]
-    cur_symtab[len(cur_symtab) - 1].children.append(top)
-    cur_offset.pop()
 
 
 def p_IfStmt(p):
@@ -1532,7 +1525,7 @@ def p_ArrayType(p):
                 "type": [2, int(p[3].children[0].leaf["label"])] +
                 p[5].children[0].leaf["type"],
                 "width":
-                p[3].children[0].leaf["label"] * p[5].children[0].leaf["width"]
+                int(p[3].children[0].leaf["label"]) * p[5].children[0].leaf["width"]
             })
     ], {"label": "Types"})
 
