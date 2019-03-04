@@ -7,6 +7,8 @@ import ply.yacc as yacc
 
 gcounter, outfile = 0, None
 
+struct_count=0
+
 cur_symtab, cur_offset = [], []
 parser = "random"
 '''PROBLEMS TO TAKE CARE OF
@@ -33,13 +35,22 @@ class values:
         self.args = args
 
 
+def lookup_top(table, id):
+    if table is None:
+        return None
+    for key, val in table.data.iteritems():
+        if key == id:
+            return val
+    return None
+
+
 def lookup(table, id):
     if table is None:
         return None
     for key, val in table.data.iteritems():
         if key == id:
             return val
-    return lookup(table.previous, id)
+    return lookup(table.previous,id)
 
 
 # does not handle Struct Type
@@ -54,6 +65,10 @@ def check_type(type1, type2):
     elif type1[0] == type2[0]:
         return check_type(type1[1:], type2[1:])
     return False
+
+def generate_name():
+    return "struct_"+str(struct_count)
+    struct_count+=1
 
 
 class Node:
@@ -577,9 +592,8 @@ def p_TypeDef(p):
     if t is None:
         cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
             type=p[2].children[0].leaf["type"],
-            width=p[2].children[0].leaf["width"],
+            width=0,
             offset=cur_offset[len(cur_offset) - 1])
-        cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
     else:
         print "Redeclaration of " + str(
             child.leaf["label"]) + " at line " + str(p.lineno(2))
@@ -1435,6 +1449,7 @@ def p_Types(p):
     p[1].leaf["label"] = "Types"
     p[0] = p[1]
     p[0].leaf["type"] = p[0].children[0].leaf["type"]
+    p[0].leaf["width"] = p[0].children[0].leaf["width"]
 
 
 def p_Typelit(p):
@@ -1478,11 +1493,18 @@ def p_PointerType(p):
 
 def p_StructType(p):
     '''
-    StructType : STRUCT RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
+    StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
     p[5].leaf["label"] = "Fields"
-    p[0] = Node("void", [Node("void", p[5].children, {"label": "struct"})],
+    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct"})],
                 {"label": "rub"})
+
+def p_M(p):
+    '''
+    M : empty
+    '''
+    cur_symtab.append(symtab())
+    cur_offset.append(0)
 
 
 def p_RepeatFieldDecl(p):
@@ -1506,6 +1528,17 @@ def p_FieldDecl(p):
     FieldDecl : IdentifierList Types
     '''
     p[0] = Node("void", [p[1], p[2]], {"label": "Field"})
+    for child in p[1].children:
+        t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
+        if t is None:
+            cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
+                           type=p[2].children[0].leaf["type"],
+                           width=p[2].children[0].leaf["width"],
+                           offset=cur_offset[len(cur_offset) - 1])
+            cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
+        else:
+            print "Redeclaration of " + str(
+                child.leaf["label"]) + " at line " + str(p.lineno(2))
 
 
 # ArrayType   = "[" ArrayLength "]" ElementType .
