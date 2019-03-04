@@ -35,7 +35,7 @@ def lookup_top(table, id):
     for key, val in table.data.iteritems():
         if key == id:
             return val
-    return None
+    return lookup(table.previous,id)
 
 
 def lookup(table, id):
@@ -44,7 +44,7 @@ def lookup(table, id):
     for key, val in table.data.iteritems():
         if key == id:
             return val
-    return lookup(table.previous,id)
+    return None
 
 
 # does not handle Struct Type
@@ -61,6 +61,7 @@ def check_type(type1, type2):
     return False
 
 def generate_name():
+    global struct_count
     return "struct_"+str(struct_count)
     struct_count+=1
 
@@ -590,9 +591,9 @@ def p_TypeDef(p):
             type=p[2].children[0].leaf["type"],
             width=0,
             offset=cur_offset[len(cur_offset) - 1])
+        typedef_map[p[1]]={"type":p[2].children[0].leaf["type"],"width":p[2].children[0].leaf["width"]}
     else:
-        print "Redeclaration of " + str(
-            child.leaf["label"]) + " at line " + str(p.lineno(2))
+        print "Redeclaration of " + p[1] + " at line " + str(p.lineno(2))
 
 
 #  VarDecl     = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
@@ -1501,9 +1502,9 @@ def p_StructType(p):
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
     cur_offset.pop()
-    p[5].leaf["label"] = "Fields"
-    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct"})],
-                {"label": "rub"})
+    p[6].leaf["label"] = "Fields"
+    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct","type":[3,name],"width":top.total})],
+                {"label": "StructType"})
 
 def p_M(p):
     '''
@@ -1633,8 +1634,12 @@ def p_OperandName(p):
     '''
     OperandName : ID
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
+    if p[1] in typedef_map:
+        val=typedef_map[p[1]]
+        p[0] = Node("void", [Node("void", [], {"label": p[1],"type":val["type"],"width":val["width"]})],
                 {"label": "OperandName"})
+    else:
+        print "Type "+p[1]+" used but not declared"
 
 
 def p_Selector(p):
@@ -1733,3 +1738,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
