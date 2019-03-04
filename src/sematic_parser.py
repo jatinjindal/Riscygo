@@ -33,12 +33,13 @@ class values:
 
 
 def lookup(table,id):
+	if table is None:
+		return None
 	for key,val in table.data.iteritems():
 		if key == id:
 			return val
-	for options in table.children:
-		return lookup(options,id)
-	return None
+	return lookup(table.previous,id)
+	
 
 #does not handle Struct Type
 def check_type(type1,type2):
@@ -51,6 +52,7 @@ def check_type(type1,type2):
 			return check_type(type1[2:],type2[2:])
 	elif type1[0]==type2[0]:
 		return check_type(type1[1:],type2[1:])
+	return False
 
 
 class Node:
@@ -93,13 +95,12 @@ type_map = {
     'int16': 9,
     'int32': 10,
     'int64': 11,
-    'int': 12,
-    'uint': 13,
-    'float32': 14,
-    'float64': 15,
-    'uintptr': 16,
-    'string': 17,
-    'error': 18,
+    'uint': 12,
+    'float32': 13,
+    'float64': 14,
+    'uintptr': 15,
+    'string': 16,
+    'error': 17,
 }
 
 #PointerType-1
