@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-func pluscommon(a, b, c int) int {
+func pluscommon(a int,b int) int {
 	return a + b + c
 }
 

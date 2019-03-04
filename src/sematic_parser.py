@@ -21,7 +21,7 @@ class symtab:
     def __init__(self, previous=None):
         self.previous = previous
         self.data = {}
-        self.children = []
+        self.children = {}
         self.total = 0
 
 
@@ -644,6 +644,10 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
+    print "function symtab"
+    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    print "total offset:", cur_offset[len(cur_offset) - 1]
     t = lookup(cur_symtab[len(cur_symtab) - 1], p[1].children[1].leaf["label"])
     if t is None:
         cur_symtab[len(cur_symtab) -
@@ -655,6 +659,10 @@ def p_FunctionDecl(p):
     else:
         print "Redeclaration of " + str(
             p[3].leaf["label"]) + " at line " + str(p.lineno(2))
+    top=cur_symtab[len(cur_symtab)-1]
+    top.total = cur_offset[len(cur_offset) - 1]
+    cur_symtab.pop()
+    cur_offset.pop()
     p[2].leaf["label"] = "FunctionBody"
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
@@ -675,7 +683,9 @@ def p_FunctionName(p):
     FunctionName : ID
     '''
     p[0] = Node("void", [], {"label": p[1]})
-    cur_symtab.append(symtab(cur_symtab[len(cur_symtab) - 1]))
+    t_new=symtab(cur_symtab[len(cur_symtab)-1])
+    cur_symtab[len(cur_symtab)-1].children[p[1]]=t_new
+    cur_symtab.append(t_new)
     cur_offset.append(0)
 
 
@@ -951,10 +961,7 @@ def p_Block(p):
     Block : LBRACE RepeatNewline  StatementList RBRACE
     '''
     p[0] = Node("void", [p[3]], {"label": "Block"})
-    print "function symtab"
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-    print "total offset:", cur_offset[len(cur_offset) - 1]
+
     top = cur_symtab[len(cur_symtab) - 1]
     cur_symtab.pop()
     top.total = cur_offset[len(cur_offset) - 1]
