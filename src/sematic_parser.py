@@ -26,10 +26,10 @@ class symtab:
 
 
 class values:
-    def __init__(self, type=None, offset=None, args=None):
+    def __init__(self, type=None, width=0, offset=None, args=None):
         self.type = type
         self.offset = offset
-        self.width = 0
+        self.width = width
         self.args = args
 
 
@@ -525,8 +525,9 @@ def p_ConstSpec(p):
             if t is None:
                 cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
+                               width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
-                cur_offset[len(cur_offset) - 1] += child.leaf["width"]
+                cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
             else:
                 print "Redeclaration of " + str(
                     child.leaf["label"]) + " at line " + str(p.lineno(2))
@@ -540,8 +541,9 @@ def p_ConstSpec(p):
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
+                               width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
-                cur_offset[len(cur_offset) - 1] += child.leaf["width"]
+                cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
             else:
                 print "Redeclaration of " + str(
                     child.leaf["label"]) + " at line " + str(p.lineno(2))
@@ -577,6 +579,7 @@ def p_TypeDef(p):
     if t is None:
         cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
             type=p[2].children[0].leaf["type"],
+            width=p[2].children[0].leaf["width"],
             offset=cur_offset[len(cur_offset) - 1])
         cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
     else:
@@ -608,6 +611,7 @@ def p_VarSpec(p):
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
+                               width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
@@ -625,6 +629,7 @@ def p_VarSpec(p):
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
+                               width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
@@ -650,6 +655,7 @@ def p_FunctionDecl(p):
                    1].data[p[1].children[1].leaf["label"]] = values(
                        type=p[1].children[3].leaf["type"],
                        offset=cur_offset[len(cur_offset) - 1],
+                       width=p[1].children[3].leaf["width"],
                        args=p[1].children[2].leaf["type"])
         cur_offset[len(cur_offset) - 1] += p[1].children[3].leaf["width"]
     else:
@@ -766,6 +772,7 @@ def p_ParameterDecl(p):
         if t is None:
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
                 type=p[2].children[0].leaf["type"],
+                width=0,
                 offset=cur_offset[len(cur_offset) - 1])
         else:
             print "Redeclaration of " + str(
