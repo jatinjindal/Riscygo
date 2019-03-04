@@ -7,6 +7,52 @@ import ply.yacc as yacc
 
 gcounter, outfile = 0, None
 
+cur_symtab,cur_offset=[],[]
+parser="random"
+
+
+
+'''PROBLEMS TO TAKE CARE OF
+1) some Declarations dont have type declared
+2) Function Declarations with no body would cause problem in redeclarations
+3) How to incorporate Function arguments in function body
+SOLUTION-- I have removed fucntion Signatures before usage...Too many complications in symbol table entries
+'''
+class symtab:
+	def __init__(self,previous=None):
+		self.previous=previous
+		self.data={}
+		self.children=[]
+		self.total=0
+
+class values:
+	def __init__(self,type=None,offset=None,args=None):
+		self.type=type
+		self.offset=offset
+		self.args=args
+
+
+def lookup(table,id):
+	for key,val in table.data.iteritems():
+		if key == id:
+			return val
+	for options in table.children:
+		return lookup(options,id)
+	return None
+
+#does not handle Struct Type
+def check_type(type1,type2):
+	if len(type1)!=len(type2):
+		return 0
+	if len(type1) == 1:
+		return type1[0]==type2[0]
+	elif type1[0]==2 and type2[0]==2:
+		if type1[1]==type2[1]:
+			return check_type(type1[2:],type2[2:])
+	elif type1[0]==type2[0]:
+		return check_type(type1[1:],type2[1:])
+
+
 class Node:
     def __init__(self, type, children=None, leaf=None):
         self.type = type
@@ -34,6 +80,32 @@ def dfs(a, lcounter):
                 gcounter += 1
                 dfs(x, gcounter)
 
+
+type_map = {
+    'bool': 1,
+    'byte': 2,
+    'int': 3,
+    'uint8': 4,
+    'uint16': 5,
+    'uint32': 6,
+    'uint64': 7,
+    'int8': 8,
+    'int16': 9,
+    'int32': 10,
+    'int64': 11,
+    'int': 12,
+    'uint': 13,
+    'float32': 14,
+    'float64': 15,
+    'uintptr': 16,
+    'string': 17,
+    'error': 18,
+}
+
+#PointerType-1
+#ArrayType-2
+#StructType-3
+#SliceType-4
 
 reserved = {
     'break': 'BREAK',
@@ -244,13 +316,24 @@ def p_Start(p):
     p[0] = p[1]
     dfs(p[0], 0)
     outfile.write("}")
+    print "symtab data:",cur_symtab[len(cur_symtab)-1].data
+    print "symtab children:",cur_symtab[len(cur_symtab)-1].children
+    print "total offset:",cur_offset[len(cur_offset)-1]
 
 
 def p_SourceFile(p):
     '''
-    SourceFile : RepeatNewline PackageClause ImportClause RepeatTopLevelDecl
+    SourceFile : RepeatNewline PackageClause ImportClause A RepeatTopLevelDecl
     '''
     p[0] = Node("void", [p[2], p[3], p[4]], {"label": "Start"})
+
+def p_A(p):
+	'''
+	A : empty
+	'''
+	cur_symtab.append(symtab())
+	cur_offset.append(0)
+
 
 
 def p_PackageClause(p):
@@ -410,14 +493,27 @@ def p_ConstDecl(p):
 def p_ConstSpec(p):
     '''
     ConstSpec : IdentifierList
-              | IdentifierList EQUALS ExpressionList
+              | IdentifierList Types EQUALS ExpressionList
     '''
     if len(p) == 2:
         p[0] = Node("void", [p[1]], {"label": "ConstSpec"})
+        for child in p[1].children:
+        	t=lookup(cur_symtab[len(cur_symtab)-1],child.leaf["label"])
+        	if t is not None:
+        		y=5
+        	else:
+        		print "Variable assigned constant value before declaration"
     else:
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": "="}), p[3]],
                     {"label": "ConstSpec"})
+        for child in p[1].children:
+        	t=lookup(cur_symtab[len(cur_symtab)-1],child.leaf["label"])
+        	if t is None:
+	        	cur_symtab[len(cur_symtab)-1].data[child.leaf["label"]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+	        	cur_offset[len(cur_offset)-1]+=4
+	        else:
+	        	print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
 
 
 # TypeDecl = "type" ( TypeSpec | "(" { TypeSpec ";" } ")" ) .
@@ -441,11 +537,18 @@ def p_TypeSpec(p):
 
 # TypeDef = identifier Type .
 def p_TypeDef(p):
-    '''
-    TypeDef : ID Types
-    '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]}), p[2]],
-                {"label": "TypeDef"})
+	'''
+	TypeDef : ID Types
+	'''
+	p[0] = Node("void", [Node("void", [], {"label": p[1]}), p[2]],
+	            {"label": "TypeDef"})
+	t=lookup(cur_symtab[len(cur_symtab)-1],p[1])
+	if t is None:
+		cur_symtab[len(cur_symtab)-1].data[p[1]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+		cur_offset[len(cur_offset)-1]+=4
+	else:
+		print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
+
 
 
 #  VarDecl     = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
@@ -466,11 +569,25 @@ def p_VarSpec(p):
     '''
     if len(p) == 3:
         p[0] = Node("void", [p[1], p[2]], {"label": "Varspec"})
+        for child in p[1].children:
+        	t=lookup(cur_symtab[len(cur_symtab)-1],child.leaf["label"])
+        	if t is None:
+	        	cur_symtab[len(cur_symtab)-1].data[child.leaf["label"]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+	        	cur_offset[len(cur_offset)-1]+=4
+	        else:
+	        	print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
     elif len(p) == 6:
         p[0] = Node(
             "void",
             [p[1], p[2], Node("void", [], {"label": "="}), p[5]],
             {"label": "Varspec"})
+        for child in p[1].children:
+        	t=lookup(cur_symtab[len(cur_symtab)-1],child.leaf["label"])
+        	if t is None:
+	        	cur_symtab[len(cur_symtab)-1].data[child.leaf["label"]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+	        	cur_offset[len(cur_offset)-1]+=4
+	        else:
+	        	print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
     else:
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": "="}), p[4]],
@@ -483,32 +600,31 @@ def p_VarSpec(p):
 def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
-                 | FunctionMarker
     '''
-    if len(p) == 3:
-        p[2].leaf["label"] = "FunctionBody"
-        p[1].children = p[1].children + [p[2]]
-        p[1].leaf["label"] = "Function"
-        p[0] = p[1]
-    else:
-        p[1].leaf["label"] = "Function"
-        p[0] = p[1]
+    p[2].leaf["label"] = "FunctionBody"
+    p[1].children = p[1].children + [p[2]]
+    p[1].leaf["label"] = "Function"
+    p[0] = p[1]
+
 
 
 def p_FunctionMarker(p):
-    '''
-    FunctionMarker : FUNC RepeatNewline FunctionName Signature
-    '''
-    p[0] = Node("void",
-                [Node("void", [], {"label": "func"}), p[3]] + p[4].children,
-                {"label": "marker"})
+	'''
+	FunctionMarker : FUNC RepeatNewline FunctionName Signature
+	'''
+	p[0] = Node("void",
+	            [Node("void", [], {"label": "func"}), p[3]] + p[4].children,
+	            {"label": "marker"})
+
 
 
 def p_FunctionName(p):
-    '''
-    FunctionName : ID
-    '''
-    p[0] = Node("void", [], {"label": p[1]})
+	'''
+	FunctionName : ID
+	'''
+	p[0] = Node("void", [], {"label": p[1]})
+	cur_symtab.append(symtab(cur_symtab[len(cur_symtab)-1]))
+	cur_offset.append(0)
 
 
 # Didn't include variadic functions, it is defined by ... below
@@ -567,17 +683,20 @@ def p_RepeatParameterDecl(p):
 
 
 def p_ParameterDecl(p):
-    '''
-    ParameterDecl : ID Types
-                  | Types
-    '''
-    if len(p) == 3:
-        p[0] = Node(
-            "void", p[2].children[0].children,
-            {"label": p[1] + " " + str(p[2].children[0].leaf["label"])})
-    else:
-        p[0] = Node("void", p[1].children[0].children,
-                    {"label": str(p[1].children[0].leaf["label"])})
+	'''
+	ParameterDecl : ID Types
+	'''
+	p[0] = Node(
+	    "void", p[2].children[0].children,
+	    {"label": p[1] + " " + str(p[2].children[0].leaf["label"])})
+	t=lookup(cur_symtab[len(cur_symtab)-1],p[1])
+	if t is None:
+		cur_symtab[len(cur_symtab)-1].data[p[1]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+		cur_offset[len(cur_offset)-1]+=4
+	else:
+		print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
+
+
 
 
 def p_Result(p):
@@ -594,6 +713,7 @@ def p_FunctionBody(p):
     FunctionBody : Block
     '''
     p[0] = p[1]
+
 
 
 # LabeledStmt = Label ":" Statement .
@@ -748,16 +868,17 @@ def p_GotoStmt(p):
 
 
 def p_Block(p):
-    '''
-    Block : LBRACE RepeatNewline Marker StatementList RBRACE
-    '''
-    p[0] = Node("void", [p[4]], {"label": "Block"})
+	'''
+	Block : LBRACE RepeatNewline  StatementList RBRACE
+	'''
+	p[0] = Node("void", [p[4]], {"label": "Block"})    
+	top=cur_symtab[len(cur_symtab)-1]
+	cur_symtab.pop()
+	top.total=cur_offset[len(cur_offset)-1]
+	cur_symtab[len(cur_symtab)-1].children.append(top)
+	cur_offset.pop()
 
 
-def p_Marker(p):
-    '''
-    Marker : empty
-    '''
 
 
 def p_IfStmt(p):
@@ -1187,10 +1308,9 @@ def p_LiteralType(p):
     '''
     p[0] = p[1]
 
-
 def p_Mytypes(p):
     '''
-    Mytypes : BOOL
+    Mytypes : BOOL 
             | BYTE
             | INT
             | UINT8
@@ -1208,7 +1328,7 @@ def p_Mytypes(p):
             | STRING
             | ERROR
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
+    p[0] = Node("void", [Node("void", [], {"label": p[1],"type":[type_map[p[1]]]})],
                 {"label": "Mytypes"})
 
 
@@ -1239,7 +1359,7 @@ def p_SliceType(p):
     '''
     p[0] = Node("void", [
         Node("void", [Node("void", [], {"label": "[]"})] + p[3].children,
-             {"label": "SliceType"})
+             {"label": "SliceType","type":[4]+p[3].children[0].leaf["type"]})
     ], {"label": "Types"})
 
 
@@ -1249,7 +1369,7 @@ def p_PointerType(p):
     '''
     p[0] = Node("void", [
         Node("void", p[2].children[0].children,
-             {"label": p[1] + p[2].children[0].leaf["label"]})
+             {"label": p[1] + p[2].children[0].leaf["label"],"type":[1]+p[2].children[0].leaf["type"]})
     ], {"Label": "PointerType"})
 
 
@@ -1294,7 +1414,7 @@ def p_ArrayType(p):
         Node("void", [
             Node("void", [],
                  {"label": "[" + str(p[3].children[0].leaf["label"]) + "]"})
-        ] + p[5].children, {"label": "ArrayType"})
+        ] + p[5].children, {"label": "ArrayType","type":[2,int(p[3].children[0].leaf["label"])]+p[5].children[0].leaf["type"]})
     ], {"label": "Types"})
 
 
@@ -1434,16 +1554,16 @@ def p_RepeatNewline(p):
                   | empty
     '''
 
-
 def p_error(p):
-    if p:
-        print("Syntax error at lexpos %s:%s at lineno %s\n" % (p.lexpos, p.value, str(p.lineno)))
-    else:
-        print("Syntax error at EOF")
+ if p:
+      print("Syntax error at line no:", p.lineno,"and position", p.lexpos, "with token value ", p.value,"\n")
+ else:
+      print("Syntax error at EOF")
 
 
 def main():
     global outfile
+    global parser
     parser = argparse.ArgumentParser(description='A Parser for Golang')
     parser.add_argument('--output', required=True, help='output dot file')
     parser.add_argument('input', help='input golang file')
@@ -1451,7 +1571,7 @@ def main():
     with open(args.input, 'r') as f:
         program = ''.join(f.readlines())
     lexer = lex.lex()
-    yacc.yacc()
+    parser=yacc.yacc()
     outfile = open(args.output, 'w+')
     outfile.write("digraph G{\n")
     yacc.parse(program, tracking=True)
