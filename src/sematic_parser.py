@@ -10,14 +10,8 @@ gcounter, outfile = 0, None
 struct_count=0
 
 cur_symtab, cur_offset = [], []
-parser = "random"
-'''PROBLEMS TO TAKE CARE OF
-1) some Declarations dont have type declared
-2) Function Declarations with no body would cause problem in redeclarations
-3) How to incorporate Function arguments in function body
-SOLUTION-- I have removed fucntion Signatures before usage...Too many complications in symbol table entries
-'''
-
+typedef_map={}
+struct_name_map={}
 
 class symtab:
     def __init__(self, previous=None):
@@ -350,7 +344,9 @@ def p_Start(p):
     Start : SourceFile
     '''
     print "Succesfully completed."
-
+    p[0] = p[1]
+    dfs(p[0], 0)
+    outfile.write("}")
     print "main symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
@@ -532,7 +528,7 @@ def p_ConstSpec(p):
               | IdentifierList Types EQUALS ExpressionList
     '''
     if len(p) == 3:
-        p[0] = Node("void", [p[1]], {"label": "ConstSpec"})
+        p[0] = Node("void", [p[1],p[2]], {"label": "ConstSpec"})
         for child in p[1].children:
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
@@ -546,7 +542,7 @@ def p_ConstSpec(p):
                     child.leaf["label"]) + " at line " + str(p.lineno(2))
     else:
         p[0] = Node("void",
-                    [p[1], Node("void", [], {"label": "="}), p[3]],
+                    [p[1], Node("void", [], {"label": "="}), p[4]],
                     {"label": "ConstSpec"})
         for child in p[1].children:
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
@@ -1495,6 +1491,16 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
+    print "struct symtab"
+    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    print "total offset:", cur_offset[len(cur_offset) - 1]
+    name=generate_name()
+    top=cur_symtab[len(cur_symtab)-1]
+    struct_name_map[name]=top
+    top.total = cur_offset[len(cur_offset) - 1]
+    cur_symtab.pop()
+    cur_offset.pop()
     p[5].leaf["label"] = "Fields"
     p[0] = Node("void", [Node("void", p[6].children, {"label": "struct"})],
                 {"label": "rub"})
