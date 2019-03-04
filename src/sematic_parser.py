@@ -316,6 +316,7 @@ def p_Start(p):
     p[0] = p[1]
     dfs(p[0], 0)
     outfile.write("}")
+    print "main symtab"
     print "symtab data:",cur_symtab[len(cur_symtab)-1].data
     print "symtab children:",cur_symtab[len(cur_symtab)-1].children
     print "total offset:",cur_offset[len(cur_offset)-1]
@@ -598,13 +599,21 @@ def p_VarSpec(p):
 # FunctionName = identifier .
 # FunctionBody = Block .
 def p_FunctionDecl(p):
-    '''
-    FunctionDecl : FunctionMarker  FunctionBody
-    '''
-    p[2].leaf["label"] = "FunctionBody"
-    p[1].children = p[1].children + [p[2]]
-    p[1].leaf["label"] = "Function"
-    p[0] = p[1]
+	'''
+	FunctionDecl : FunctionMarker  FunctionBody
+	'''
+
+	t=lookup(cur_symtab[len(cur_symtab)-1],p[1].children[1].leaf["label"])
+	if t is None:
+		cur_symtab[len(cur_symtab)-1].data[p[1].children[1].leaf["label"]]=values(type=p[1].children[3].leaf["type"],offset=cur_offset[len(cur_offset)-1],args=p[1].children[2].leaf["type"])
+		cur_offset[len(cur_offset)-1]+=4
+	else:
+		print "Redeclaration of "+str(p[3].leaf["label"])+" at line "+str(p.lineno(2))
+	p[2].leaf["label"] = "FunctionBody"
+	p[1].children = p[1].children + [p[2]]
+	p[1].leaf["label"] = "Function"
+	p[0] = p[1]
+
 
 
 
@@ -615,7 +624,7 @@ def p_FunctionMarker(p):
 	p[0] = Node("void",
 	            [Node("void", [], {"label": "func"}), p[3]] + p[4].children,
 	            {"label": "marker"})
-
+	
 
 
 def p_FunctionName(p):
@@ -636,14 +645,14 @@ def p_FunctionName(p):
 
 
 def p_Signature(p):
-    '''
-    Signature : Parameters
-              | Parameters Result
-    '''
-    if len(p) == 2:
-        p[0] = Node("void", [p[1]], {"label": "Signature"})
-    else:
-        p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
+	'''
+	Signature : Parameters
+	          | Parameters Result
+	'''
+	if len(p) == 2:
+	    p[0] = Node("void", [p[1],Node("void",[],{"label":"Result","type":[]})], {"label": "Signature"})
+	else:
+	    p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
 
 
 # Parameters can't end in ,
@@ -656,9 +665,9 @@ def p_Parameters(p):
         p[0] = Node("void", [
             Node("void", [], {"label": "("}),
             Node("void", [], {"label": ")"})
-        ], {"label": "Arguments"})
+        ], {"label": "Arguments","type":[()]})
     else:
-        p[0] = Node("void", p[3].children, {"label": "Arguments"})
+        p[0] = Node("void", p[3].children, {"label": "Arguments","type":[tuple(p[3].leaf["type"])]})
 
 
 def p_ParameterList(p):
@@ -666,6 +675,7 @@ def p_ParameterList(p):
     ParameterList : ParameterDecl RepeatParameterDecl
     '''
     p[2].children = [p[1]] + p[2].children
+    p[2].leaf["type"].insert(0,p[1].leaf["type"])
     p[2].leaf["label"] = "ParameterList"
     p[0] = p[2]
 
@@ -676,25 +686,33 @@ def p_RepeatParameterDecl(p):
                         | empty
     '''
     if len(p) == 2:
-        p[0] = Node("void", [], {"label": "RepeatDecl"})
+        p[0] = Node("void", [], {"label": "RepeatDecl","type":[]})
     else:
         p[4].children = [p[3]] + p[4].children
         p[0] = p[4]
+        p[0].leaf["type"].insert(0,p[3].leaf["type"])
 
 
 def p_ParameterDecl(p):
 	'''
 	ParameterDecl : ID Types
+				  | Types
 	'''
-	p[0] = Node(
+	if len(p) == 3:
+		p[0] = Node(
 	    "void", p[2].children[0].children,
-	    {"label": p[1] + " " + str(p[2].children[0].leaf["label"])})
-	t=lookup(cur_symtab[len(cur_symtab)-1],p[1])
-	if t is None:
-		cur_symtab[len(cur_symtab)-1].data[p[1]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
-		cur_offset[len(cur_offset)-1]+=4
+	    {"label": p[1] + " " + str(p[2].children[0].leaf["label"]),"type":p[2].children[0].leaf["type"]})
+		t=lookup(cur_symtab[len(cur_symtab)-1],p[1])
+		if t is None:
+			cur_symtab[len(cur_symtab)-1].data[p[1]]=values(type=p[2].children[0].leaf["type"],offset=cur_offset[len(cur_offset)-1])
+			cur_offset[len(cur_offset)-1]+=4
+		else:
+			print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
 	else:
-		print "Redeclaration of "+str(child.leaf["label"])+" at line "+str(p.lineno(2))
+	    p[0] = Node("void", p[1].children[0].children,
+	                {"label": str(p[1].children[0].leaf["label"]),"type":p[1].children[0].leaf["type"]})
+
+	
 
 
 
@@ -706,6 +724,7 @@ def p_Result(p):
     '''
     p[1].leaf["label"] = "Return Values"
     p[0] = p[1]
+
 
 
 def p_FunctionBody(p):
@@ -871,7 +890,11 @@ def p_Block(p):
 	'''
 	Block : LBRACE RepeatNewline  StatementList RBRACE
 	'''
-	p[0] = Node("void", [p[4]], {"label": "Block"})    
+	p[0] = Node("void", [p[4]], {"label": "Block"}) 
+	print "function symtab"	
+	print "symtab data:",cur_symtab[len(cur_symtab)-1].data
+	print "symtab children:",cur_symtab[len(cur_symtab)-1].children
+	print "total offset:",cur_offset[len(cur_offset)-1]   
 	top=cur_symtab[len(cur_symtab)-1]
 	cur_symtab.pop()
 	top.total=cur_offset[len(cur_offset)-1]
@@ -1340,6 +1363,7 @@ def p_Types(p):
     '''
     p[1].leaf["label"] = "Types"
     p[0] = p[1]
+    p[0].leaf["type"]=p[0].children[0].leaf["type"]
 
 
 def p_Typelit(p):
