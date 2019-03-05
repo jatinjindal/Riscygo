@@ -7,11 +7,12 @@ import ply.yacc as yacc
 
 gcounter, outfile = 0, None
 
-struct_count=0
+struct_count = 0
 
 cur_symtab, cur_offset = [], []
-typedef_map={}
-struct_name_map={}
+typedef_map = {}
+struct_name_map = {}
+
 
 class symtab:
     def __init__(self, previous=None):
@@ -35,7 +36,7 @@ def lookup_top(table, id):
     for key, val in table.data.iteritems():
         if key == id:
             return val
-    return lookup(table.previous,id)
+    return lookup(table.previous, id)
 
 
 def lookup(table, id):
@@ -54,7 +55,7 @@ def check_type(type1, type2):
     if len(type1) == 1:
         return type1[0] == type2[0]
     elif type1[0] == 3 and type2[0] == 3:
-        return type1[1]==type2[1]
+        return type1[1] == type2[1]
     elif type1[0] == 2 and type2[0] == 2:
         if type1[1] == type2[1]:
             return check_type(type1[2:], type2[2:])
@@ -62,10 +63,11 @@ def check_type(type1, type2):
         return check_type(type1[1:], type2[1:])
     return False
 
+
 def generate_name():
     global struct_count
-    return "struct_"+str(struct_count)
-    struct_count+=1
+    return "struct_" + str(struct_count)
+    struct_count += 1
 
 
 class Node:
@@ -350,14 +352,14 @@ def p_Start(p):
     p[0] = p[1]
     dfs(p[0], 0)
     outfile.write("}")
-    print "-"*40
+    print "-" * 40
     print "main symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "typedef_map",typedef_map
-    print "struct_name_map",struct_name_map
-    print "-"*40
+    print "typedef_map", typedef_map
+    print "struct_name_map", struct_name_map
+    print "-" * 40
 
 
 def p_SourceFile(p):
@@ -535,15 +537,17 @@ def p_ConstSpec(p):
               | IdentifierList Types EQUALS ExpressionList
     '''
     if len(p) == 3:
-        p[0] = Node("void", [p[1],p[2]], {"label": "ConstSpec"})
+        p[0] = Node("void", [p[1], p[2]], {"label": "ConstSpec"})
         for child in p[1].children:
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
-                cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
+                cur_symtab[len(cur_symtab) -
+                           1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
                                width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
-                cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
+                cur_offset[len(cur_offset) -
+                           1] += p[2].children[0].leaf["width"]
             else:
                 print "Redeclaration of " + str(
                     child.leaf["label"]) + " at line " + str(p.lineno(2))
@@ -559,7 +563,8 @@ def p_ConstSpec(p):
                                type=p[2].children[0].leaf["type"],
                                width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1])
-                cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
+                cur_offset[len(cur_offset) -
+                           1] += p[2].children[0].leaf["width"]
             else:
                 print "Redeclaration of " + str(
                     child.leaf["label"]) + " at line " + str(p.lineno(2))
@@ -597,7 +602,10 @@ def p_TypeDef(p):
             type=p[2].children[0].leaf["type"],
             width=0,
             offset=cur_offset[len(cur_offset) - 1])
-        typedef_map[p[1]]={"type":p[2].children[0].leaf["type"],"width":p[2].children[0].leaf["width"]}
+        typedef_map[p[1]] = {
+            "type": p[2].children[0].leaf["type"],
+            "width": p[2].children[0].leaf["width"]
+        }
     else:
         print "Redeclaration of " + p[1] + " at line " + str(p.lineno(2))
 
@@ -664,12 +672,12 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
-    print "-"*40
+    print "-" * 40
     print "function symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-"*40
+    print "-" * 40
     t = lookup(cur_symtab[len(cur_symtab) - 1], p[1].children[1].leaf["label"])
     if t is None:
         cur_symtab[len(cur_symtab) -
@@ -682,7 +690,7 @@ def p_FunctionDecl(p):
     else:
         print "Redeclaration of " + str(
             p[3].leaf["label"]) + " at line " + str(p.lineno(2))
-    top=cur_symtab[len(cur_symtab)-1]
+    top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
     cur_offset.pop()
@@ -706,8 +714,8 @@ def p_FunctionName(p):
     FunctionName : ID
     '''
     p[0] = Node("void", [], {"label": p[1]})
-    t_new=symtab(cur_symtab[len(cur_symtab)-1])
-    cur_symtab[len(cur_symtab)-1].children[p[1]]=t_new
+    t_new = symtab(cur_symtab[len(cur_symtab) - 1])
+    cur_symtab[len(cur_symtab) - 1].children[p[1]] = t_new
     cur_symtab.append(t_new)
     cur_offset.append(0)
 
@@ -726,13 +734,14 @@ def p_Signature(p):
               | Parameters Result
     '''
     if len(p) == 2:
-        p[0] = Node(
-            "void",
-            [p[1], Node("void", [], {
+        p[0] = Node("void", [
+            p[1],
+            Node("void", [], {
                 "label": "Result",
                 "type": [],
                 "width": 0
-            })], {"label": "Signature"})
+            })
+        ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
 
@@ -985,7 +994,6 @@ def p_Block(p):
     Block : LBRACE RepeatNewline  StatementList RBRACE
     '''
     p[0] = Node("void", [p[3]], {"label": "Block"})
-
 
 
 def p_IfStmt(p):
@@ -1280,6 +1288,7 @@ def p_Term4(p):
         p[1].leaf["label"] = "Term4"
         p[0] = p[1]
     else:
+        print(p[2].leaf)
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
         p[0] = Node(
@@ -1312,6 +1321,8 @@ def p_UnaryExp(p):
     else:
         p[0] = Node("void", p[1].children + p[3].children,
                     {"label": "UnaryExp"})
+        p[0].children[0].leaf["type"] = p[0].children[1].leaf["type"]
+        p[0].children[0].leaf["width"] = p[0].children[1].leaf["width"]
 
 
 def p_UnaryOp(p):
@@ -1376,7 +1387,13 @@ def p_intLit(p):
     '''
     intLit : INTEGER
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})], {"label": "Int"})
+    p[0] = Node("void", [
+        Node("void", [], {
+            "label": p[1],
+            "type": type_map['int'],
+            "width": type_width['int']
+        })
+    ], {"label": "Int"})
 
 
 # float_lit = decimals "." [ decimals ] [ exponent ] |decimals exponent |"." decimals [ exponent ] .
@@ -1384,8 +1401,13 @@ def p_floatLit(p):
     '''
     floatLit : FLOAT
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
-                {"label": "Float"})
+    p[0] = Node("void", [
+        Node("void", [], {
+            "label": p[1],
+            "type": type_map['float'],
+            "width": type_width['float']
+        })
+    ], {"label": "Float"})
 
 
 # string_lit = raw_string_lit | interpreted_string_lit .
@@ -1394,8 +1416,14 @@ def p_stringLit(p):
     stringLit : STRINGVAL
               | CHARACTER
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1][1:-1]})],
-                {"label": "String"})
+    p[0] = Node("void", [
+        Node(
+            "void", [], {
+                "label": p[1][1:-1],
+                "type": type_map['string'],
+                "width": len(p[1]) - 2
+            })
+    ], {"label": "String"})
 
 
 # CompositeLit = LiteralType LiteralValue .
@@ -1500,21 +1528,27 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
-    print "-"*40
+    print "-" * 40
     print "struct symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-"*40
-    name=generate_name()
-    top=cur_symtab[len(cur_symtab)-1]
-    struct_name_map[name]=top
+    print "-" * 40
+    name = generate_name()
+    top = cur_symtab[len(cur_symtab) - 1]
+    struct_name_map[name] = top
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
     cur_offset.pop()
     p[6].leaf["label"] = "Fields"
-    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct","type":[3,name],"width":top.total})],
-                {"label": "StructType"})
+    p[0] = Node("void", [
+        Node("void", p[6].children, {
+            "label": "struct",
+            "type": [3, name],
+            "width": top.total
+        })
+    ], {"label": "StructType"})
+
 
 def p_M(p):
     '''
@@ -1549,9 +1583,9 @@ def p_FieldDecl(p):
         t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
         if t is None:
             cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
-                           type=p[2].children[0].leaf["type"],
-                           width=p[2].children[0].leaf["width"],
-                           offset=cur_offset[len(cur_offset) - 1])
+                type=p[2].children[0].leaf["type"],
+                width=p[2].children[0].leaf["width"],
+                offset=cur_offset[len(cur_offset) - 1])
             cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
         else:
             print "Redeclaration of " + str(
@@ -1575,7 +1609,8 @@ def p_ArrayType(p):
                 "type": [2, int(p[3].children[0].leaf["label"])] +
                 p[5].children[0].leaf["type"],
                 "width":
-                int(p[3].children[0].leaf["label"]) * p[5].children[0].leaf["width"]
+                int(p[3].children[0].leaf["label"]) *
+                p[5].children[0].leaf["width"]
             })
     ], {"label": "Types"})
 
@@ -1645,12 +1680,18 @@ def p_OperandName(p):
     OperandName : ID
     '''
     if p[1] in typedef_map:
-        val=typedef_map[p[1]]
-        p[0] = Node("void", [Node("void", [], {"label": p[1],"type":val["type"],"width":val["width"]})],
-                {"label": "OperandName"})
+        val = typedef_map[p[1]]
+        p[0] = Node("void", [
+            Node("void", [], {
+                "label": p[1],
+                "type": val["type"],
+                "width": val["width"]
+            })
+        ], {"label": "OperandName"})
     else:
-        print "Type "+p[1]+" used but not declared"
+        print "Type " + p[1] + " used but not declared"
         exit()
+
 
 def p_Selector(p):
     '''
@@ -1748,4 +1789,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
