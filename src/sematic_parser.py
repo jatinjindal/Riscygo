@@ -1,6 +1,7 @@
 import argparse
 import re
 import sys
+from collections import OrderedDict
 
 import ply.lex as lex
 import ply.yacc as yacc
@@ -26,6 +27,10 @@ class symtab:
             self.label_map=previous.label_map
             self.struct_name_map=previous.struct_name_map
 
+class structtab:
+    def __init__(self):
+        self.data = OrderedDict()
+        self.total = 0
 
 
 class values:
@@ -53,13 +58,26 @@ def lookup(table, id):
             return val
     return None
 
+def check_eq(name1,name2,table):
+    sym1=table.typedef_map[name1]
+    sym2=table.typedef_map[name2]
+    if len(sym1)!=len(sym2):
+        return False
+    l1=sym1.keys()
+    l2=sym2.keys()
+    for i in range(0,len(sym1)):
+        if l1[i] != l2[i]:
+            return False
+    return True
 
 # does not handle Struct Type
-def check_type(type1, type2):
+def check_type(type1, type2,table):
     if len(type1) != len(type2):
         return 0
     if len(type1) == 1:
         return type1[0] == type2[0]
+    elif type1[0] ==5 and type2[0]  == 5:
+        return check_eq(type1[1],type2[1],table)
     elif type1[0] == 3 and type2[0] == 3:
         return type1[1]==type2[1]
     elif type1[0] == 2 and type2[0] == 2:
@@ -146,7 +164,7 @@ type_width = {
 # PointerType-1
 # ArrayType-2
 # StructType-3
-# SliceType-4
+# Typedef check-5
 
 reserved = {
     'break': 'BREAK',
@@ -1510,25 +1528,28 @@ def p_StructType(p):
     print "-"*40
     print "struct symtab"
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
     print "-"*40
-    name=generate_name()
     top=cur_symtab[len(cur_symtab)-1]
-    cur_symtab[len(cur_symtab)-1].struct_name_map[name]=top
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
     cur_offset.pop()
     p[6].leaf["label"] = "Fields"
-    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct","type":[3,name],"width":top.total})],
+    p[0] = Node("void", [Node("void", p[6].children, {"label": "struct","type":[3,p[2]],"width":top.total})],
                 {"label": "StructType"})
 
 def p_M(p):
     '''
     M : empty
     '''
-    cur_symtab.append(symtab())
+    name=generate_name()
+    top=structtab()
+    cur_symtab[len(cur_symtab)-1].struct_name_map[name]=top
+    cur_symtab.append(top)
     cur_offset.append(0)
+    p[0]=name
+
+    
 
 
 def p_RepeatFieldDecl(p):
@@ -1653,7 +1674,7 @@ def p_OperandName(p):
     '''
     if p[1] in cur_symtab[len(cur_symtab)-1].typedef_map:
         val=cur_symtab[len(cur_symtab)-1].typedef_map[p[1]]
-        p[0] = Node("void", [Node("void", [], {"label": p[1],"type":val["type"],"width":val["width"]})],
+        p[0] = Node("void", [Node("void", [], {"label": p[1],"type":[5,p[1]],"width":val["width"]})],
                 {"label": "OperandName"})
     else:
         print "Type "+p[1]+" used but not declared"
