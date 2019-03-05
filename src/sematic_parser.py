@@ -10,8 +10,7 @@ gcounter, outfile = 0, None
 struct_count=0
 
 cur_symtab, cur_offset = [], []
-typedef_map={}
-struct_name_map={}
+
 
 class symtab:
     def __init__(self, previous=None):
@@ -19,6 +18,14 @@ class symtab:
         self.data = {}
         self.children = {}
         self.total = 0
+        self.typedef_map={}
+        self.label_map={}
+        self.struct_name_map={}
+        if previous is not None:
+            self.typedef_map=previous.typedef_map
+            self.label_map=previous.label_map
+            self.struct_name_map=previous.struct_name_map
+
 
 
 class values:
@@ -355,8 +362,8 @@ def p_Start(p):
     print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "typedef_map",typedef_map
-    print "struct_name_map",struct_name_map
+    print "typedef_map",cur_symtab[len(cur_symtab)-1].typedef_map
+    print "struct_name_map",cur_symtab[len(cur_symtab)-1].struct_name_map
     print "-"*40
 
 
@@ -597,7 +604,7 @@ def p_TypeDef(p):
             type=p[2].children[0].leaf["type"],
             width=0,
             offset=cur_offset[len(cur_offset) - 1])
-        typedef_map[p[1]]={"type":p[2].children[0].leaf["type"],"width":p[2].children[0].leaf["width"]}
+        cur_symtab[len(cur_symtab)-1].typedef_map[p[1]]={"type":p[2].children[0].leaf["type"],"width":p[2].children[0].leaf["width"]}
     else:
         print "Redeclaration of " + p[1] + " at line " + str(p.lineno(2))
 
@@ -1508,7 +1515,7 @@ def p_StructType(p):
     print "-"*40
     name=generate_name()
     top=cur_symtab[len(cur_symtab)-1]
-    struct_name_map[name]=top
+    cur_symtab[len(cur_symtab)-1].struct_name_map[name]=top
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
     cur_offset.pop()
@@ -1644,8 +1651,8 @@ def p_OperandName(p):
     '''
     OperandName : ID
     '''
-    if p[1] in typedef_map:
-        val=typedef_map[p[1]]
+    if p[1] in cur_symtab[len(cur_symtab)-1].typedef_map:
+        val=cur_symtab[len(cur_symtab)-1].typedef_map[p[1]]
         p[0] = Node("void", [Node("void", [], {"label": p[1],"type":val["type"],"width":val["width"]})],
                 {"label": "OperandName"})
     else:
@@ -1755,4 +1762,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
