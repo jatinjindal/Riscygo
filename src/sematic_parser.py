@@ -1344,7 +1344,7 @@ def p_PrimaryExpr(p):
 def p_Operand(p):
     '''
     Operand : Literal
-            | OperandName
+            | OperandName2
     '''
     p[1].leaf["label"] = "Operand"
     p[0] = p[1]
@@ -1651,6 +1651,13 @@ def p_OperandName(p):
     else:
         print "Type "+p[1]+" used but not declared"
         exit()
+
+def p_OperandName2(p):
+    '''
+    OperandName2 : ID
+    '''
+    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
+                {"label": "OperandName"})
 
 def p_Selector(p):
     '''
