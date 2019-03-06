@@ -143,6 +143,10 @@ type_width = {
     'error': 0,
 }
 
+arithmetic_allowed = {
+
+}
+
 # PointerType-1
 # ArrayType-2
 # StructType-3
@@ -1293,13 +1297,17 @@ def p_Term4(p):
         p[1].leaf["label"] = "Term4"
         p[0] = p[1]
     else:
-        print(p[2].leaf)
+        print(p[2], p[4].leaf, p[1].leaf)
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
+        if p[2] == '*':
+            print('Biswa madarchod')
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term4"})
+        p[0].leaf["type"] = p[4].leaf["type"]
+        p[0].leaf["width"] = p[4].leaf["width"]
 
 
 def p_Term5(p):
@@ -1313,6 +1321,9 @@ def p_Term5(p):
     else:
         p[3].leaf["label"] = "Term5"
         p[0] = p[3]
+    if len(p) == 2:
+        p[0].leaf['type'] = p[0].children[0].leaf['type']
+        p[0].leaf['width'] = p[0].children[0].leaf['width']
 
 
 def p_UnaryExp(p):
@@ -1702,7 +1713,11 @@ def p_OperandName2(p):
     '''
     OperandName2 : ID
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]})],
+    tmp = lookup(cur_symtab[-1], p[1])
+    if tmp is None:
+        print("Variable " + p[1] + " undeclared.")
+        exit()
+    p[0] = Node("void", [Node("void", [], {"label": p[1], "type": tmp.type, "width": tmp.width})],
                 {"label": "OperandName"})
 
 
