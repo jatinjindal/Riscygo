@@ -58,6 +58,16 @@ def lookup(table, id):
             return val
     return None
 
+def find_basic_type(type,table):
+    if len(type) == 1:
+        return type[0]
+    elif type[0] >= 1 and type[0] <= 4:
+        return None
+    else:
+        return find_basic_type(table.typedef_map[type[1]],table)
+
+
+
 def check_eq(name1,name2,table):
     sym1=table.typedef_map[name1]
     sym2=table.typedef_map[name2]
@@ -162,9 +172,39 @@ type_width = {
     'error': 0,
 }
 
-arithmetic_allowed = {
-
+math_alwd_dict = {
+    'bool': False,
+    'byte': False,
+    'int': True,
+    'uint8': True,
+    'uint16': True,
+    'uint32': True,
+    'uint64': True,
+    'int8': True,
+    'int16': True,
+    'int32': True,
+    'int64': True,
+    'uint': True,
+    'float32': True,
+    'float64': True,
+    'uintptr': True,
+    'string': False,
+    'error': False
 }
+
+def math_alwd(type):
+    type = find_basic_type(type)
+    if type is None:
+        return False
+    return math_alwd_dict[type]
+
+def implicit_cast(type1, type2):
+    assert(len(type1) == 1 and len(type2) == 1)
+    if type1 == type2:
+        return type1, 0
+    if type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 3 and type2[0] <= 12:
+        return [type_map['int64']], 8
+    return [type_map['float64']], 8
 
 # PointerType-1
 # ArrayType-2
@@ -216,6 +256,7 @@ types = {
     'string': 'STRING',
     'error': 'ERROR',
 }
+
 
 constants = {
     'true': 'TRUE',
@@ -1232,6 +1273,8 @@ def p_Expression(p):
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Expression"})
+        p[0].leaf["type"] = type_map['bool']
+        p[0].leaf["width"] = 1
 
 
 def p_Term1(p):
@@ -1249,6 +1292,8 @@ def p_Term1(p):
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term1"})
+        p[0].leaf["type"] = type_map['bool']
+        p[0].leaf["width"] = 1
 
 
 def p_Term2(p):
@@ -1266,6 +1311,8 @@ def p_Term2(p):
             Node("void", p[1].children + p[4].children,
                  {"label": p[2].children[0].leaf["label"]})
         ], {"label": "Term2"})
+        p[0].leaf["type"] = type_map['bool']
+        p[0].leaf["width"] = 1
 
 
 def p_Relop(p):
@@ -1295,10 +1342,33 @@ def p_Term3(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
+        type1 = p[4].leaf['type']
+        type2 = p[1].leaf['type']
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term3"})
+        if p[2] != '+':
+            if math_alwd(type1) == 0:
+                print('Arithmetic operation not allowed for type: ' + type1)
+                exit()
+            if math_alwd(type2) == 0:
+                print('Arithmetic operation not allowed for type: ' + type2)
+                exit()
+            p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"], p[1].leaf["type"])
+            if p[0].leaf["type"] == p[1].leaf["type"]:
+                p[0].leaf["width"] = p[1].leaf["width"]
+            else:
+                p[0].leaf["width"] = p[4].leaf["width"]
+            if width == 8:
+                p[0].leaf["width"] = 8
+        else:
+            if math_alwd(type1) == 0 or math_alwd(type) == 0:
+                if type1 != type2 or type1 != [16] or type2 != [16]:
+                    print('Arithmetic operation not allowed for type: ' + type1 + ' or type: ' + type2)
+            else:
+                p[0].leaf["type"] = type1
+                p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
 
 
 def p_Term4(p):
@@ -1316,17 +1386,27 @@ def p_Term4(p):
         p[1].leaf["label"] = "Term4"
         p[0] = p[1]
     else:
-        print(p[2], p[4].leaf, p[1].leaf)
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
-        if p[2] == '*':
-            print('Biswa madarchod')
+        type1 = p[4].leaf['type']
+        type2 = p[1].leaf['type']
+        if math_alwd(type1) == 0:
+            print('Arithmetic operation not allowed for type: ' + type1)
+            exit()
+        if math_alwd(type2) == 0:
+            print('Arithmetic operation not allowed for type: ' + type2)
+            exit()
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term4"})
-        p[0].leaf["type"] = p[4].leaf["type"]
-        p[0].leaf["width"] = p[4].leaf["width"]
+        p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"], p[1].leaf["type"])
+        if p[0].leaf["type"] == p[1].leaf["type"]:
+            p[0].leaf["width"] = p[1].leaf["width"]
+        else:
+            p[0].leaf["width"] = p[4].leaf["width"]
+        if width == 8:
+            p[0].leaf["width"] = 8
 
 
 def p_Term5(p):
@@ -1724,7 +1804,7 @@ def p_OperandName2(p):
     '''
     OperandName2 : ID
     '''
-    tmp = lookup(cur_symtab[-1], p[1])
+    tmp = lookup_top(cur_symtab[-1], p[1])
     if tmp is None:
         print("Variable " + p[1] + " undeclared.")
         exit()
