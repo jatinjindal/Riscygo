@@ -12,8 +12,9 @@ struct_count=0
 if_count =0
 elif_count =0
 for_count =0
+default_count = 0
 cur_symtab, cur_offset = [], []
-
+case_count =0
 
 class symtab:
     def __init__(self, previous=None):
@@ -95,7 +96,6 @@ def generate_name():
     struct_count+=1
     return "struct_"+str(struct_count)
     
-
 def generate_ifname():
     global if_count
     if_count+=1
@@ -105,6 +105,17 @@ def generate_forname():
     global for_count
     for_count+=1
     return "for_" + str(for_count)
+
+def generate_casename():
+    global case_count
+    case_count+=1
+    return "case_" + str(case_count)
+
+
+def generate_defaultname():
+    global default_count
+    default_count+=1
+    return "case_" + str(default_count)
 
 def find_parentfunc(table):
     if table.label == "func":
@@ -178,7 +189,6 @@ type_width = {
     'uintptr': 8,
     'string': 0,
     'error': 0,
-
 }
 
 # PointerType-1
@@ -977,6 +987,13 @@ def p_ReturnStmt(p):
     ReturnStmt : RETURN
                | RETURN ExpressionList
     '''
+    top = cur_symtab[len(cur_symtab)-1]
+    while(top.label not in ["func","global"]):
+        top = top.previous
+    if(top.label == "global"):
+        print "Return statement should be inside function", p.lineno(1)
+
+
     if len(p) == 2:
         p[0] = Node("void", [Node("void", [], {"label": "return"})],
                     {"label": "ReturnStmt"})
@@ -1005,6 +1022,13 @@ def p_BreakStmt(p):
         p[0] = Node("void",
                     [Node("void", [], {"label": "break"}), p[2].children[0]],
                     {"label": "BreakStmt"})
+    top = cur_symtab[len(cur_symtab) - 1]
+    while(top.label in ["if", "else", "elif"]):
+        top = top.previous
+
+    if(top.label not in ["for","case", "default"]):
+        print "Break is not inside inside switch or for at ", p.lineno(1)
+
 
 
 def p_ContinueStmt(p):
@@ -1012,6 +1036,13 @@ def p_ContinueStmt(p):
     ContinueStmt : CONTINUE
                  | CONTINUE Label
     '''
+    top = cur_symtab[len(cur_symtab) - 1]
+    while(top.label in ["if", "else", "elif" ]):
+        top = top.previous
+
+    if(top.label != "for"):
+        print "Continue is not inside for loop at ", p.lineno(1)
+
     if len(p) == 2:
         p[0] = Node("void", [Node("void", [], {"label": "continue"})],
                     {"label": "ContinueStmt"})
@@ -1116,15 +1147,6 @@ def p_IfMarker(p):
     cur_offset.append(0)
 
 
-
-# def p_ElseifMarker(p):
-#     '''
-#     ElseifMarker : empty
-#     '''
-#     lcount = if_count
-#     global if_count
-#     if_count -=10
-
 def p_EndIfMarker(p):
     '''
     EndIfMarker : empty
@@ -1178,7 +1200,6 @@ def p_ExprSwitchStmt(p):
                     [Node("void", [], {"label": "switch"}), p[3], p[6]],
                     {"label": "ExprSwitchStmt"})
 
-
 def p_RepeatExprCaseClause(p):
     '''
     RepeatExprCaseClause : ExprCaseClause RepeatExprCaseClause
@@ -1196,19 +1217,53 @@ def p_ExprCaseClause(p):
     ExprCaseClause : ExprSwitchCase COLON RepeatNewline StatementList
     '''
     p[0] = Node("void", p[1].children + [p[4]], {"label": "ExprCaseClause"})
+    top=cur_symtab[len(cur_symtab)-1]
+    top.total = cur_offset[len(cur_offset) - 1]
+    cur_symtab.pop()
+    cur_offset.pop()
 
 
 def p_ExprSwitchCase(p):
     '''
-    ExprSwitchCase : CASE RepeatNewline Expression
-                   | DEFAULT  RepeatNewline
+    ExprSwitchCase : CASE CaseMarker RepeatNewline Expression
+                   | DEFAULT  DefaultMarker RepeatNewline
     '''
-    if len(p) == 3:
+    if len(p) == 4:
         p[0] = Node("void", [Node("void", [], {"label": "default"})],
                     {"label": "ExprSwitchCase"})
     else:
-        p[0] = Node("void", [Node("void", [], {"label": "case"}), p[3]],
+        p[0] = Node("void", [Node("void", [], {"label": "case"}), p[4]],
                     {"label": "ExprSwitchCase"})
+
+
+def p_CaseMarker(p):
+    '''
+    CaseMarker : empty
+    '''
+    parent = find_parentfunc(cur_symtab[len(cur_symtab)-1])
+    tnew=symtab(cur_symtab[len(cur_symtab)-1])
+    name = generate_casename()
+    parent.children[name]= tnew
+    parent.data[name]=values()
+    print name
+    tnew.label = "case"
+    cur_symtab.append(tnew)
+    cur_offset.append(0)
+
+
+def p_DefaultMarker(p):
+    '''
+    DefaultMarker : empty
+    '''
+    parent = find_parentfunc(cur_symtab[len(cur_symtab)-1])
+    tnew=symtab(cur_symtab[len(cur_symtab)-1])
+    name = "default_"+str(if_count)
+    parent.children[name]= tnew
+    parent.data[name]=values()
+    print name
+    tnew.label = "default"
+    cur_symtab.append(tnew)
+    cur_offset.append(0)
 
 
 def p_ForStmt(p):
@@ -1926,4 +1981,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
