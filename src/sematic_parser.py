@@ -196,28 +196,28 @@ type_width = {
 }
 
 math_alwd_dict = {
-    'bool': False,
-    'byte': False,
-    'int': True,
-    'uint8': True,
-    'uint16': True,
-    'uint32': True,
-    'uint64': True,
-    'int8': True,
-    'int16': True,
-    'int32': True,
-    'int64': True,
-    'uint': True,
-    'float32': True,
-    'float64': True,
-    'uintptr': True,
-    'string': False,
-    'error': False
+    type_map['bool']: False,
+    type_map['byte']: False,
+    type_map['int']: True,
+    type_map['uint8']: True,
+    type_map['uint16']: True,
+    type_map['uint32']: True,
+    type_map['uint64']: True,
+    type_map['int8']: True,
+    type_map['int16']: True,
+    type_map['int32']: True,
+    type_map['int64']: True,
+    type_map['uint']: True,
+    type_map['float32']: True,
+    type_map['float64']: True,
+    type_map['uintptr']: True,
+    type_map['string']: False,
+    type_map['error']: False
 }
 
 
 def math_alwd(type):
-    type = find_basic_type(type)
+    type = find_basic_type(type, cur_symtab[-1])
     if type is None:
         return False
     return math_alwd_dict[type]
@@ -1420,6 +1420,12 @@ def p_Expression(p):
         p[0] = p[1]
     else:
         p[4].leaf["label"] = "Expression"
+        if p[1].leaf["type"] != [1]:
+            print('logical operation not allowed for type: ' + type1)
+            exit()
+        if p[4].leaf["type"] != [1]:
+            print('logical operation not allowed for type: ' + type2)
+            exit()
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
@@ -1439,6 +1445,12 @@ def p_Term1(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
+        if p[1].leaf["type"] != [1]:
+            print('logical operation not allowed for type: ' + type1)
+            exit()
+        if p[4].leaf["type"] != [1]:
+            print('logical operation not allowed for type: ' + type2)
+            exit()
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
@@ -1458,6 +1470,14 @@ def p_Term2(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
+        type1 = p[4].leaf['type']
+        type2 = p[1].leaf['type']
+        if math_alwd(type1) == 0:
+            print('Arithmetic operation not allowed for type: ' + type1)
+            exit()
+        if math_alwd(type2) == 0:
+            print('Arithmetic operation not allowed for type: ' + type2)
+            exit()
         p[0] = Node("void", [
             Node("void", p[1].children + p[4].children,
                  {"label": p[2].children[0].leaf["label"]})
@@ -1515,7 +1535,7 @@ def p_Term3(p):
             if width == 8:
                 p[0].leaf["width"] = 8
         else:
-            if math_alwd(type1) == 0 or math_alwd(type) == 0:
+            if math_alwd(type1) == 0 or math_alwd(type2) == 0:
                 if type1 != type2 or type1 != [16] or type2 != [16]:
                     print('Arithmetic operation not allowed for type: ' + type1
                           + ' or type: ' + type2)
