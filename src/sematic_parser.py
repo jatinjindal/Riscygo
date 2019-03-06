@@ -695,6 +695,10 @@ def p_FunctionDecl(p):
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
     print "-"*40
+    top=cur_symtab[len(cur_symtab)-1]
+    top.total = cur_offset[len(cur_offset) - 1]
+    cur_symtab.pop()
+    cur_offset.pop()
     t = lookup(cur_symtab[len(cur_symtab) - 1], p[1].children[1].leaf["label"])
     if t is None:
         cur_symtab[len(cur_symtab) -
@@ -707,10 +711,7 @@ def p_FunctionDecl(p):
     else:
         print "Redeclaration of " + str(
             p[3].leaf["label"]) + " at line " + str(p.lineno(2))
-    top=cur_symtab[len(cur_symtab)-1]
-    top.total = cur_offset[len(cur_offset) - 1]
-    cur_symtab.pop()
-    cur_offset.pop()
+    
     p[2].leaf["label"] = "FunctionBody"
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
