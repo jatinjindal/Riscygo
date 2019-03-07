@@ -52,7 +52,7 @@ def lookup_top(table, id):
     for key, val in table.data.iteritems():
         if key == id:
             return val
-    return lookup(table.previous, id)
+    return lookup_top(table.previous, id)
 
 
 def lookup(table, id):
@@ -64,13 +64,13 @@ def lookup(table, id):
     return None
 
 
-def find_basic_type(type, table):
-    if len(type) == 1:
-        return type[0]
-    elif type[0] >= 1 and type[0] <= 4:
+def find_basic_type(type1, table):
+    if len(type1) == 1:
+        return type1[0]
+    elif type1[0] >= 1 and type1[0] <= 4:
         return None
     else:
-        return find_basic_type(table.typedef_map[type[1]], table)
+        return find_basic_type(table.typedef_map[type1[1]]["type"], table)
 
 
 def check_eq(name1, name2, table):
@@ -227,11 +227,11 @@ math_alwd_dict = {
 }
 
 
-def math_alwd(type):
-    type = find_basic_type(type, cur_symtab[-1])
-    if type is None:
+def math_alwd(type1):
+    type1 = find_basic_type(type1, cur_symtab[-1])
+    if type1 is None:
         return False
-    return math_alwd_dict[type]
+    return math_alwd_dict[type1]
 
 
 def implicit_cast(type1, type2):
@@ -1476,6 +1476,8 @@ def p_Expression(p):
         p[0] = p[1]
     else:
         p[4].leaf["label"] = "Expression"
+        type1 = p[4].leaf['type']
+        type2 = p[1].leaf['type']
         if p[1].leaf["type"] != [1]:
             print('logical operation not allowed for type: ' + type1)
             exit()
@@ -1501,6 +1503,8 @@ def p_Term1(p):
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
+        type1 = p[4].leaf['type']
+        type2 = p[1].leaf['type']
         if p[1].leaf["type"] != [1]:
             print('logical operation not allowed for type: ' + type1)
             exit()
@@ -2045,7 +2049,7 @@ def p_OperandName2(p):
     '''
     tmp = lookup_top(cur_symtab[-1], p[1])
     if tmp is None:
-        print("Variable " + p[1] + " undeclared.")
+        print("Variable " + p[1] + " undeclared in OperandName2.")
         exit()
     p[0] = Node("void", [
         Node("void", [], {
@@ -2153,3 +2157,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
