@@ -793,22 +793,11 @@ def p_FunctionDecl(p):
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
     print "-" * 40
-    top = cur_symtab[len(cur_symtab) - 1]
-    top.total = cur_offset[len(cur_offset) - 1]
+    top = cur_symtab[-1]
+    top.total = cur_offset[-1]
     cur_symtab.pop()
     cur_offset.pop()
-    t = lookup(cur_symtab[len(cur_symtab) - 1], p[1].children[1].leaf["label"])
-    if t is None:
-        cur_symtab[len(cur_symtab) -
-                   1].data[p[1].children[1].leaf["label"]] = values(
-                       type=p[1].children[3].leaf["type"],
-                       offset=cur_offset[len(cur_offset) - 1],
-                       width=p[1].children[3].leaf["width"],
-                       args=p[1].children[2].leaf["type"])
-        cur_offset[len(cur_offset) - 1] += p[1].children[3].leaf["width"]
-    else:
-        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
-            p[3].leaf["label"]) + " at line " + str(p.lineno(1))
+    t = lookup(cur_symtab[-1], p[1].children[1].leaf["label"])
     p[2].leaf["label"] = "FunctionBody"
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
@@ -822,6 +811,18 @@ def p_FunctionMarker(p):
     p[0] = Node("void",
                 [Node("void", [], {"label": "func"}), p[3]] + p[4].children,
                 {"label": "marker"})
+    t = lookup(cur_symtab[-2], p[0].children[1].leaf["label"])
+    if t is None:
+        cur_symtab[-2].data[p[0].children[1].leaf["label"]] = values(
+                       type=p[0].children[3].leaf["type"],
+                       offset=cur_offset[-2],
+                       width=p[0].children[3].leaf["width"],
+                       args=p[0].children[2].leaf["type"])
+        cur_offset[-2] += p[0].children[3].leaf["width"]
+        cur_symtab[-1].label_map.append(p[3].leaf["label"])
+    else:
+        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+            p[3].leaf["label"]) + " at line " + str(p.lineno(1))
 
 
 def p_FunctionName(p):
@@ -942,8 +943,10 @@ def p_Result(p):
     Result : Parameters
            | Types
     '''
-    p[1].leaf["label"] = "Return Values"
     p[0] = p[1]
+    if p[1].leaf['label'] == 'Types':
+        p[0].leaf["type"] = [(p[1].leaf["type"], )]
+    p[1].leaf["label"] = "Return Values"
     p[0].leaf["width"] = 0
 
 
@@ -1063,11 +1066,24 @@ def p_ReturnStmt(p):
         top = top.previous
     if (top.label == "global"):
         print "[line:" + str(p.lineno(1)) + "]" + "Return statement should be inside function", p.lineno(1)
-
+        exit()
+    func = top.label_map[-1]
+    top = top.previous
+    ret_type = top.data[func].type[0]
     if len(p) == 2:
+        if len(ret_type) != 0:
+            print "[line:" + str(p.lineno(1)) + "]" + "No return expression given but expected"
+            exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"})],
                     {"label": "ReturnStmt"})
     else:
+        if len(ret_type) != len(p[2].children):
+            print "[line:" + str(p.lineno(1)) + "]" + "type of return expression does not match expectation"
+            exit()
+        for i in range(len(ret_type)):
+            if not check_type(p[2].children[i].leaf["type"], ret_type[i], cur_symtab[-1]):
+                print "[line:" + str(p.lineno(1)) + "]" + "type of return expression does not match expectation"
+                exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"}), p[2]],
                     {"label": "ReturnStmt"})
 
