@@ -99,9 +99,9 @@ def check_type(type1, type2, table):
         return type1[1] == type2[1]
     elif type1[0] == 2 and type2[0] == 2:
         if type1[1] == type2[1]:
-            return check_type(type1[2:], type2[2:])
+            return check_type(type1[2:], type2[2:],table)
     elif type1[0] == type2[0]:
-        return check_type(type1[1:], type2[1:])
+        return check_type(type1[1:], type2[1:],table)
     return False
 
 
@@ -231,17 +231,23 @@ math_alwd_dict = {
 
 
 def math_alwd(type1):
-    type1 = find_basic_type(type1, cur_symtab[-1])
-    if type1 is None:
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
         return False
-    return math_alwd_dict[type1]
+    return math_alwd_dict[type2]
 
 
 def is_type_int(type1):
-    type1 = find_basic_type(type1, cur_symtab[-1])
-    if type1 is None:
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
         return False
-    return type1 >= 3 and type1 <= 12
+    return type2 >= 3 and type2 <= 12
+
+def is_type_float(type1):
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
+        return False
+    return type2 >= 13 and type2 <= 14
 
 
 def implicit_cast(type1, type2):
@@ -1034,6 +1040,24 @@ def p_AssignOp(p):
                 {"label": "AssignOp"})
 
 
+
+            # if math_alwd(type1) == 0 or math_alwd(type2) == 0:
+            #     if type1 != type2 or type1 != [16] or type2 != [16]:
+            #         print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
+            #     else:
+            #         p[0].leaf["type"] = type1
+            #         p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
+            # else:
+            #     p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
+            #                                              p[1].leaf["type"])
+            #     if p[0].leaf["type"] == p[1].leaf["type"]:
+            #         p[0].leaf["width"] = p[1].leaf["width"]
+            #     else:
+            #         p[0].leaf["width"] = p[4].leaf["width"]
+            #     if width == 8:
+            #         p[0].leaf["width"] = 8
+
+
 def p_Assignments(p):
     '''
     Assignment : ExpressionList AssignOp RepeatNewline ExpressionList
@@ -1043,6 +1067,29 @@ def p_Assignments(p):
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": p[2]}), p[4]],
                     {"label": "Assignment"})
+        len1=len(p[1].children)
+        len2=len(p[4].children)
+        if len1 != len2:
+            print "Mismatch in number of arguments at lineno " + str(p.lineno(1))
+            exit()
+        for ind in range(0,len1):
+            if "marked" not in p[1].children[ind].children[0].leaf:
+                print "Assignment allowed only to Identifiers.Error at lineno " +str(p.lineno(1))
+                exit()
+            type1=p[1].children[ind].leaf["type"]
+            type2=p[4].children[ind].leaf["type"]
+            if check_type(type1,type2,cur_symtab[-1]) == False:
+                if math_alwd(type1) == 0 or math_alwd(type2) == 0:
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Assignment not allowed for given type ')
+                    exit()
+                else:
+                    if is_type_int(type1) == True and is_type_float(type2) == True:
+                        print("[line:" + str(p.lineno(1)) + "]" + 'Float Assignment not allowed to Integer ')
+                        exit()
+
+
+
+
     else:
         p[0] = Node("void", [p[1], p[2].children[0], p[4]],
                     {"label": "AssignOp"})
@@ -1774,7 +1821,7 @@ def p_intLit(p):
     p[0] = Node("void", [
         Node("void", [], {
             "label": p[1],
-            "type": type_map['int'],
+            "type": [type_map['int']],
             "width": type_width['int']
         })
     ], {"label": "Int"})
@@ -1788,8 +1835,8 @@ def p_floatLit(p):
     p[0] = Node("void", [
         Node("void", [], {
             "label": p[1],
-            "type": type_map['float'],
-            "width": type_width['float']
+            "type": [type_map['float64']],
+            "width": type_width['float64']
         })
     ], {"label": "Float"})
 
@@ -1804,7 +1851,7 @@ def p_stringLit(p):
         Node(
             "void", [], {
                 "label": p[1][1:-1],
-                "type": type_map['string'],
+                "type": [type_map['string']],
                 "width": len(p[1]) - 2
             })
     ], {"label": "String"})
@@ -1815,6 +1862,8 @@ def p_CompositeLit(p):
     '''
     CompositeLit : LiteralType LiteralValue
     '''
+    p[1].leaf["type"]=p[1].children[0].leaf["type"]
+    p[1].leaf["width"]=p[1].children[0].leaf["width"]
     p[0] = Node("void", [p[1], p[2]], {"label": "CompositeLit"})
 
 
@@ -2090,7 +2139,8 @@ def p_OperandName2(p):
         Node("void", [], {
             "label": p[1],
             "type": tmp.type,
-            "width": tmp.width
+            "width": tmp.width,
+            "marked":1
         })
     ], {"label": "OperandName"})
 
@@ -2192,3 +2242,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
