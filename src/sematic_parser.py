@@ -1105,12 +1105,6 @@ def p_Assignments(p):
                         print("[line:" + str(p.lineno(1)) + "]" + 'Invalid Assignment ')
                         exit()
     else:
-        
-        
-
-
-
-    else:
         p[0] = Node("void", [p[1], p[2].children[0], p[4]],
                     {"label": "AssignOp"})
 
@@ -1569,12 +1563,15 @@ def p_Expression(p):
     else:
         p[4].leaf["label"] = "Expression"
 
-        if p[1].leaf["type"] != [1]:
+        if p[1].leaf["type"] != p[4].leaf["type"]:
             print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
-        if p[4].leaf["type"] != [1]:
+
+        if (find_basic_type(p[1].leaf["type"],cur_symtab[-1]) != 1) or (find_basic_type(p[1].leaf["type"],cur_symtab[-1]) != 1):
             print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
+
+
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
@@ -1595,12 +1592,14 @@ def p_Term1(p):
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
 
-        if p[1].leaf["type"] != [1]:
+        if p[1].leaf["type"] != p[4].leaf["type"]:
             print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
-        if p[4].leaf["type"] != [1]:
+        
+        if (find_basic_type(p[1].leaf["type"],cur_symtab[-1]) != 1) or (find_basic_type(p[1].leaf["type"],cur_symtab[-1]) != 1):
             print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
+        
         p[0] = Node(
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
