@@ -169,6 +169,51 @@ def dfs(a, lcounter):
                 dfs(x, gcounter)
 
 
+def math_alwd(type1):
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
+        return False
+    return math_alwd_dict[type2]
+
+def math_alwd_int(type1):
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
+        return False
+    return type2>=3 and type2<=12
+
+def math_alwd_ext(type1):
+    type2 = find_basic_type(type1, cur_symtab[-1])
+    if type2 is None:
+        return False
+    return  (math_alwd_dict[type2] or type2==[16]) 
+
+
+#THE FOLLOWING FUNCTIONS CHECK TYPE GIVEN THAT THEY ARE ABSOLUTE INT/FLOAT/STRINGS
+def is_type_int(type1):
+    if len(type1) != 1:
+        return False
+    return type1[0] >= 3 and type2[0] <= 12
+
+def is_type_float(type1):
+    if len(type1) != 1:
+        return False
+    return type1[0] >= 13 and type2[0] <= 14
+
+def is_type_string(type1):
+    if len(type1) != 1:
+        return False
+    return type1[0] == 16
+
+def implicit_cast(type1, type2):
+    assert (len(type1) == 1 and len(type2) == 1)
+    if type1 == type2:
+        return type1, 0
+    if type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 3 and type2[0] <= 12:
+        return [type_map['int64']], 8
+    return [type_map['float64']], 8
+
+
+
 type_map = {
     'bool': 1,
     'byte': 2,
@@ -230,33 +275,6 @@ math_alwd_dict = {
 }
 
 
-def math_alwd(type1):
-    type2 = find_basic_type(type1, cur_symtab[-1])
-    if type2 is None:
-        return False
-    return math_alwd_dict[type2]
-
-
-def is_type_int(type1):
-    type2 = find_basic_type(type1, cur_symtab[-1])
-    if type2 is None:
-        return False
-    return type2 >= 3 and type2 <= 12
-
-def is_type_float(type1):
-    type2 = find_basic_type(type1, cur_symtab[-1])
-    if type2 is None:
-        return False
-    return type2 >= 13 and type2 <= 14
-
-
-def implicit_cast(type1, type2):
-    assert (len(type1) == 1 and len(type2) == 1)
-    if type1 == type2:
-        return type1, 0
-    if type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 3 and type2[0] <= 12:
-        return [type_map['int64']], 8
-    return [type_map['float64']], 8
 
 
 # PointerType-1
@@ -1083,10 +1101,12 @@ def p_Assignments(p):
                     print("[line:" + str(p.lineno(1)) + "]" + 'Assignment not allowed for given type ')
                     exit()
                 else:
-                    if is_type_int(type1) == True and is_type_float(type2) == True:
-                        print("[line:" + str(p.lineno(1)) + "]" + 'Float Assignment not allowed to Integer ')
+                    if not((is_type_int(type1) ==1 and is_type_int(type2)==1) or (is_type_float(type1)==1 and is_type_float(type2)==1) or (is_type_float(type1)==1 and is_type_int(type2)==1)):
+                        print("[line:" + str(p.lineno(1)) + "]" + 'Invalid Assignment ')
                         exit()
-
+    else:
+        
+        
 
 
 
@@ -1559,7 +1579,7 @@ def p_Expression(p):
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Expression"})
-        p[0].leaf["type"] = type_map['bool']
+        p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
 
 
@@ -1585,7 +1605,7 @@ def p_Term1(p):
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term1"})
-        p[0].leaf["type"] = type_map['bool']
+        p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
 
 
@@ -1602,18 +1622,25 @@ def p_Term2(p):
         p[1].leaf["label"] = "Expression"
         type1 = p[4].leaf['type']
         type2 = p[1].leaf['type']
-        if math_alwd(type1) == 0:
-            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
-            exit()
-        if math_alwd(type2) == 0:
-            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
-            exit()
+        if check_type(type1,type2,cur_symtab[-1]) == True:
+            if math_alwd(type1) == 0 :
+                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                exit()
+        else:
+            if is_type_int(type1) == False and is_type_float(type1) == False:
+                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                exit()
+            if is_type_int(type2) == False and is_type_float(type2) == False:
+                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                exit()
         p[0] = Node("void", [
-            Node("void", p[1].children + p[4].children,
-                 {"label": p[2].children[0].leaf["label"]})
-        ], {"label": "Term2"})
-        p[0].leaf["type"] = type_map['bool']
+                Node("void", p[1].children + p[4].children,
+                     {"label": p[2].children[0].leaf["label"]})
+            ], {"label": "Term2"})
+        p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
+
+
 
 
 def p_Relop(p):
@@ -1649,37 +1676,77 @@ def p_Term3(p):
             "void",
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Term3"})
-        if p[2] != '+':
-            if math_alwd(type1) == 0:
-                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
-                exit()
-            if math_alwd(type2) == 0:
-                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
-                exit()
-            p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
-                                                     p[1].leaf["type"])
-            if p[0].leaf["type"] == p[1].leaf["type"]:
-                p[0].leaf["width"] = p[1].leaf["width"]
+        #Only Integers allowed
+        if p[2] != '+' and p[2]!='-':
+            if check_type(type1,type2,cur_symtab[-1]) == True:
+
+                if math_alwd_int(type1) == 0 :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], p[0].leaf["width"] = p[1].leaf["type"],p[1].leaf["width"] 
+
+
             else:
-                p[0].leaf["width"] = p[4].leaf["width"]
-            if width == 8:
-                p[0].leaf["width"] = 8
-        else:
-            if math_alwd(type1) == 0 or math_alwd(type2) == 0:
-                if type1 != type2 or type1 != [16] or type2 != [16]:
-                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
-                else:
-                    p[0].leaf["type"] = type1
-                    p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
+
+                if is_type_int(type1) == False or is_type_int(type2) == False  :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'OR or XOR  operation not allowed for given type')
+                    exit()                    
+                p[0].leaf["type"], p[0].leaf["width"]=[type_map['int64']], 8
+        #Only Integers and floats allowed
+        elif p[2] == '-':
+            
+            if check_type(type1,type2,cur_symtab[-1]) == True:
+
+                if math_alwd(type1) == 0 :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], p[0].leaf["width"] = p[1].leaf["type"],p[1].leaf["width"]     
+
             else:
-                p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
-                                                         p[1].leaf["type"])
+
+                if is_type_int(type1) == False and is_type_float(type1) == False:
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                if is_type_int(type2) == False and is_type_float(type2) == False:
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], width = implicit_cast(type1,type2)
                 if p[0].leaf["type"] == p[1].leaf["type"]:
                     p[0].leaf["width"] = p[1].leaf["width"]
                 else:
                     p[0].leaf["width"] = p[4].leaf["width"]
                 if width == 8:
                     p[0].leaf["width"] = 8
+        #Only Integers and floats and strings allowed
+        elif p[2] == '+':
+            if check_type(type1,type2,cur_symtab[-1]) == True:
+
+                if math_alwd_ext(type1) == 0 :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], p[0].leaf["width"] = p[1].leaf["type"],p[1].leaf["width"] 
+                if find_basic_type(type1,cur_symtab[-1]) == 16:
+                    p[0].leaf["width"]=p[1].leaf["width"]+p[2].leaf["width"]   
+
+            else:
+                #string string case already handled with above case when both types are equal
+                if is_type_int(type1) == False and is_type_float(type1) == False :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                if is_type_int(type2) == False and is_type_float(type2) == False :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+
+                p[0].leaf["type"], width = implicit_cast(type1,type2)
+                if p[0].leaf["type"] == p[1].leaf["type"]:
+                    p[0].leaf["width"] = p[1].leaf["width"]
+                else:
+                    p[0].leaf["width"] = p[4].leaf["width"]
+                if width == 8:
+                    p[0].leaf["width"] = 8
+        else:
+            print "NOT POSSIBLE ERROR IN p_Term3"
+            exit()
 
 
 def p_Term4(p):
@@ -1701,28 +1768,46 @@ def p_Term4(p):
         p[1].leaf["label"] = "Expression"
         type1 = p[4].leaf['type']
         type2 = p[1].leaf['type']
-        if math_alwd(type1) == 0:
-            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
-            exit()
-        if math_alwd(type2) == 0:
-            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
-            exit()
-        if p[2] != '*' and p[2] != '/':
-            if (not is_type_int(type1)) or (not is_type_int(type2)):
-                print("[line:" + str(p.lineno(1)) + "]" + 'Modulo and bit arithmetic not allowed for given type')
-                exit()
-        p[0] = Node(
-            "void",
-            [Node("void", p[1].children + p[4].children, {"label": p[2]})],
-            {"label": "Term4"})
-        p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
-                                                 p[1].leaf["type"])
-        if p[0].leaf["type"] == p[1].leaf["type"]:
-            p[0].leaf["width"] = p[1].leaf["width"]
+        #Only Integers allowed
+        if p[2] != '*' and p[2]!='/':
+            if check_type(type1,type2,cur_symtab[-1]) == True:
+
+                if math_alwd_int(type1) == 0 :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], p[0].leaf["width"] = p[1].leaf["type"],p[1].leaf["width"] 
+
+
+            else:
+
+                if is_type_int(type1) == False or is_type_int(type2) == False  :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'OR or XOR  operation not allowed for given type')
+                    exit()                    
+                p[0].leaf["type"], p[0].leaf["width"]=[type_map['int64']], 8
+        #Both integers and float
         else:
-            p[0].leaf["width"] = p[4].leaf["width"]
-        if width == 8:
-            p[0].leaf["width"] = 8
+            if check_type(type1,type2,cur_symtab[-1]) == True:
+                if math_alwd(type1) == 0 :
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], p[0].leaf["width"] = p[1].leaf["type"],p[1].leaf["width"] 
+                
+            else:
+
+                if is_type_int(type1) == False and is_type_float(type1) == False:
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                if is_type_int(type2) == False and is_type_float(type2) == False:
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
+                    exit()
+                p[0].leaf["type"], width = implicit_cast(type1,type2)
+                if p[0].leaf["type"] == p[1].leaf["type"]:
+                    p[0].leaf["width"] = p[1].leaf["width"]
+                else:
+                    p[0].leaf["width"] = p[4].leaf["width"]
+                if width == 8:
+                    p[0].leaf["width"] = 8
+
 
 
 def p_Term5(p):
@@ -2242,4 +2327,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
