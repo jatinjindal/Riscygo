@@ -1621,9 +1621,18 @@ def p_Term3(p):
             if math_alwd(type1) == 0 or math_alwd(type2) == 0:
                 if type1 != type2 or type1 != [16] or type2 != [16]:
                     print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
+                else:
+                    p[0].leaf["type"] = type1
+                    p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
             else:
-                p[0].leaf["type"] = type1
-                p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
+                p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
+                                                         p[1].leaf["type"])
+                if p[0].leaf["type"] == p[1].leaf["type"]:
+                    p[0].leaf["width"] = p[1].leaf["width"]
+                else:
+                    p[0].leaf["width"] = p[4].leaf["width"]
+                if width == 8:
+                    p[0].leaf["width"] = 8
 
 
 def p_Term4(p):
