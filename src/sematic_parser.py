@@ -664,8 +664,8 @@ def p_ConstSpec(p):
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
-                print "Redeclaration of " + str(
-                    child.leaf["label"]) + " at line " + str(p.lineno(2))
+                print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                    child.leaf["label"]) + " at line " + str(p.lineno(1))
     else:
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": "="}), p[4]],
@@ -681,8 +681,8 @@ def p_ConstSpec(p):
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
-                print "Redeclaration of " + str(
-                    child.leaf["label"]) + " at line " + str(p.lineno(2))
+                print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                    child.leaf["label"]) + " at line " + str(p.lineno(1))
 
 
 # TypeDecl = "type" ( TypeSpec | "(" { TypeSpec ";" } ")" ) .
@@ -722,7 +722,7 @@ def p_TypeDef(p):
             "width": p[2].children[0].leaf["width"]
         }
     else:
-        print "Redeclaration of " + p[1] + " at line " + str(p.lineno(2))
+        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + p[1] + " at line " + str(p.lineno(1))
 
 
 #  VarDecl     = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
@@ -754,8 +754,8 @@ def p_VarSpec(p):
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
-                print "Redeclaration of " + str(
-                    child.leaf["label"]) + " at line " + str(p.lineno(2))
+                print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                    child.leaf["label"]) + " at line " + str(p.lineno(1))
     elif len(p) == 6:
         p[0] = Node(
             "void",
@@ -772,8 +772,8 @@ def p_VarSpec(p):
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
-                print "Redeclaration of " + str(
-                    child.leaf["label"]) + " at line " + str(p.lineno(2))
+                print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                    child.leaf["label"]) + " at line " + str(p.lineno(1))
     else:
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": "="}), p[4]],
@@ -807,8 +807,8 @@ def p_FunctionDecl(p):
                        args=p[1].children[2].leaf["type"])
         cur_offset[len(cur_offset) - 1] += p[1].children[3].leaf["width"]
     else:
-        print "Redeclaration of " + str(
-            p[3].leaf["label"]) + " at line " + str(p.lineno(2))
+        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+            p[3].leaf["label"]) + " at line " + str(p.lineno(1))
     p[2].leaf["label"] = "FunctionBody"
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
@@ -927,8 +927,8 @@ def p_ParameterDecl(p):
                 width=0,
                 offset=cur_offset[len(cur_offset) - 1])
         else:
-            print "Redeclaration of " + str(
-                child.leaf["label"]) + " at line " + str(p.lineno(2))
+            print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                child.leaf["label"]) + " at line " + str(p.lineno(1))
     else:
         p[0] = Node(
             "void", p[1].children[0].children, {
@@ -963,7 +963,7 @@ def p_LabeledStmt(p):
     p[0] = Node("void", p[1].children + [p[4]], {"label": "LabeledStmt"})
     if (p[1].children[0].leaf["label"] in cur_symtab[len(cur_symtab) -
                                                      1].label_map):
-        print("Label " + p[1].children[0].leaf["label"] +
+        print("[line:" + str(p.lineno(1)) + "]" + "Label " + p[1].children[0].leaf["label"] +
               " redeclared at line no: " + str(p.lineno(1)) + "\n")
     else:
         cur_symtab[len(cur_symtab) - 1].label_map.append(
@@ -1062,7 +1062,7 @@ def p_ReturnStmt(p):
     while (top.label not in ["func", "global"]):
         top = top.previous
     if (top.label == "global"):
-        print "Return statement should be inside function", p.lineno(1)
+        print "[line:" + str(p.lineno(1)) + "]" + "Return statement should be inside function", p.lineno(1)
 
     if len(p) == 2:
         p[0] = Node("void", [Node("void", [], {"label": "return"})],
@@ -1097,7 +1097,7 @@ def p_BreakStmt(p):
         top = top.previous
 
     if (top.label not in ["for", "case", "default"]):
-        print "Break is not inside inside switch or for at ", p.lineno(1)
+        print "[line:" + str(p.lineno(1)) + "]" + "Break is not inside inside switch or for at ", p.lineno(1)
 
 
 def p_ContinueStmt(p):
@@ -1110,7 +1110,7 @@ def p_ContinueStmt(p):
         top = top.previous
 
     if (top.label != "for"):
-        print "Continue is not inside for loop at ", p.lineno(1)
+        print "[line:" + str(p.lineno(1)) + "]" + "Continue is not inside for loop at ", p.lineno(1)
 
     if len(p) == 2:
         p[0] = Node("void", [Node("void", [], {"label": "continue"})],
@@ -1131,8 +1131,8 @@ def p_GotoStmt(p):
                 {"label": "GotoStmt"})
     if (p[2].children[0].leaf["label"] not in cur_symtab[len(cur_symtab) -
                                                          1].label_map):
-        print("Label: " + p[2].children[0].leaf["label"] +
-              " undefined at line no: " + str(p.lineno(2)) + "\n")
+        print("[line:" + str(p.lineno(1)) + "]" + "Label: " + p[2].children[0].leaf["label"] +
+              " undefined at line no: " + str(p.lineno(1)) + "\n")
 
 
 def p_Block(p):
@@ -1487,10 +1487,10 @@ def p_Expression(p):
         p[4].leaf["label"] = "Expression"
 
         if p[1].leaf["type"] != [1]:
-            print('logical operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
         if p[4].leaf["type"] != [1]:
-            print('logical operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
         p[0] = Node(
             "void",
@@ -1513,10 +1513,10 @@ def p_Term1(p):
         p[1].leaf["label"] = "Expression"
 
         if p[1].leaf["type"] != [1]:
-            print('logical operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
         if p[4].leaf["type"] != [1]:
-            print('logical operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'logical operation not allowed for given type')
             exit()
         p[0] = Node(
             "void",
@@ -1540,10 +1540,10 @@ def p_Term2(p):
         type1 = p[4].leaf['type']
         type2 = p[1].leaf['type']
         if math_alwd(type1) == 0:
-            print('Arithmetic operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
             exit()
         if math_alwd(type2) == 0:
-            print('Arithmetic operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
             exit()
         p[0] = Node("void", [
             Node("void", p[1].children + p[4].children,
@@ -1588,10 +1588,10 @@ def p_Term3(p):
             {"label": "Term3"})
         if p[2] != '+':
             if math_alwd(type1) == 0:
-                print('Arithmetic operation not allowed for given type ')
+                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
                 exit()
             if math_alwd(type2) == 0:
-                print('Arithmetic operation not allowed for given type')
+                print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
                 exit()
             p[0].leaf["type"], width = implicit_cast(p[4].leaf["type"],
                                                      p[1].leaf["type"])
@@ -1604,7 +1604,7 @@ def p_Term3(p):
         else:
             if math_alwd(type1) == 0 or math_alwd(type2) == 0:
                 if type1 != type2 or type1 != [16] or type2 != [16]:
-                    print('Arithmetic operation not allowed for given type ')
+                    print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type ')
             else:
                 p[0].leaf["type"] = type1
                 p[0].leaf["width"] = p[1].leaf["width"] + p[4].leaf["width"]
@@ -1630,14 +1630,14 @@ def p_Term4(p):
         type1 = p[4].leaf['type']
         type2 = p[1].leaf['type']
         if math_alwd(type1) == 0:
-            print('Arithmetic operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
             exit()
         if math_alwd(type2) == 0:
-            print('Arithmetic operation not allowed for given type')
+            print("[line:" + str(p.lineno(1)) + "]" + 'Arithmetic operation not allowed for given type')
             exit()
         if p[2] != '*' and p[2] != '/':
             if (not is_type_int(type1)) or (not is_type_int(type2)):
-                print('Modulo and bit arithmetic not allowed for given type')
+                print("[line:" + str(p.lineno(1)) + "]" + 'Modulo and bit arithmetic not allowed for given type')
                 exit()
         p[0] = Node(
             "void",
@@ -1948,8 +1948,8 @@ def p_FieldDecl(p):
                 offset=cur_offset[len(cur_offset) - 1])
             cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
         else:
-            print "Redeclaration of " + str(
-                child.leaf["label"]) + " at line " + str(p.lineno(2))
+            print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                child.leaf["label"]) + " at line " + str(p.lineno(1))
 
 
 # ArrayType   = "[" ArrayLength "]" ElementType .
@@ -2049,7 +2049,7 @@ def p_OperandName(p):
             })
         ], {"label": "OperandName"})
     else:
-        print "Type " + p[1] + " used but not declared"
+        print "[line:" + str(p.lineno(1)) + "]" + "Type " + p[1] + " used but not declared"
         exit()
 
 
@@ -2059,7 +2059,7 @@ def p_OperandName2(p):
     '''
     tmp = lookup_top(cur_symtab[-1], p[1])
     if tmp is None:
-        print("Variable " + p[1] + " undeclared in OperandName2.")
+        print("[line:" + str(p.lineno(1)) + "]" + "Variable " + p[1] + " undeclared in OperandName2.")
         exit()
     p[0] = Node("void", [
         Node("void", [], {
