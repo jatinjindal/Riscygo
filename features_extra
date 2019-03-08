@@ -1,0 +1,6 @@
+EXTRA FEATURES
+
+1) Added Newlines/semicolon as optionals
+2) Included typedef with equivalence structures as recommended by Golang
+3) All(Structures,arrays) assignments like a=b
+4) Linked List 

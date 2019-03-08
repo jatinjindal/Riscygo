@@ -34,9 +34,14 @@ class symtab:
 
 
 class structtab:
-    def __init__(self):
+    def __init__(self,previous=None):
         self.data = OrderedDict()
         self.total = 0
+        self.typedef_map={}
+        self.struct_name_map={}
+        if previous is not None:
+            self.typedef_map=previous.typedef_map
+            self.struct_name_map=previous.struct_name_map
 
 
 class values:
@@ -83,6 +88,8 @@ def check_eq(name1, name2, table):
     l2 = sym2.keys()
     for i in range(0, len(sym1)):
         if l1[i] != l2[i]:
+            return False
+        if not( check_type(sym1[l1[i]].type, sym2[l2[i]].type, table)):
             return False
     return True
 
@@ -748,22 +755,38 @@ def p_TypeSpec(p):
 # TypeDef = identifier Type .
 def p_TypeDef(p):
     '''
-    TypeDef : ID Types
+    TypeDef : ID K Types
     '''
-    p[0] = Node("void", [Node("void", [], {"label": p[1]}), p[2]],
+    p[0] = Node("void", [Node("void", [], {"label": p[1]}), p[3]],
                 {"label": "TypeDef"})
-    t = lookup(cur_symtab[len(cur_symtab) - 1], p[1])
+    cur_symtab[-1].data[p[1]] = values(
+        type=p[3].children[0].leaf["type"],
+        width=0,
+        offset=cur_offset[-1])
+    cur_symtab[-1].typedef_map[p[1]] = {
+        "type": p[3].children[0].leaf["type"],
+        "width": p[3].children[0].leaf["width"]
+    }
+    
+    
+def p_K(p):
+    '''
+    K : empty
+    '''
+    t = lookup(cur_symtab[-1], p[-1])
     if t is None:
-        cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
-            type=p[2].children[0].leaf["type"],
+        cur_symtab[-1].data[p[-1]] = values(
+            type=[],
             width=0,
-            offset=cur_offset[len(cur_offset) - 1])
-        cur_symtab[len(cur_symtab) - 1].typedef_map[p[1]] = {
-            "type": p[2].children[0].leaf["type"],
-            "width": p[2].children[0].leaf["width"]
+            offset=0)
+        cur_symtab[-1].typedef_map[p[-1]] = {
+            "type": [],
+            "width": 0,
         }
     else:
-        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + p[1] + " at line " + str(p.lineno(1))
+        print "[line:" + str(p.lineno(-1)) + "]" + "Redeclaration of " + p[-1] + " at line " + str(p.lineno(-1))
+        exit()
+
 
 
 #  VarDecl     = "var" ( VarSpec | "(" { VarSpec ";" } ")" ) .
@@ -2173,7 +2196,9 @@ def p_StructType(p):
     '''
     print "-" * 40
     print "struct symtab"
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    print "symtab data:\n"
+    for key,val in cur_symtab[-1].data.iteritems():
+        print key,"-->type: ",val.type," width: ",val.width
     print "total offset:", cur_offset[len(cur_offset) - 1]
     print "-" * 40
     top = cur_symtab[len(cur_symtab) - 1]
@@ -2195,7 +2220,7 @@ def p_M(p):
     M : empty
     '''
     name = generate_name()
-    top = structtab()
+    top = structtab(cur_symtab[-1])
     cur_symtab[len(cur_symtab) - 1].struct_name_map[name] = top
     cur_symtab.append(top)
     cur_offset.append(0)
@@ -2226,8 +2251,23 @@ def p_FieldDecl(p):
     for child in p[1].children:
         t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
         if t is None:
+            type1 = p[2].children[0].leaf["type"]
+            if len(type1)>1:
+                if type1[-2] == 5:
+                    val=cur_symtab[-1].typedef_map[type1[-1]]["type"]
+                    if len(val) == 0:
+                        if len(type1)>2:
+                            if type1[-3] != 1:
+                                print "[line:" + str(p.lineno(2)) + "]" + "Recursive Struct not allowed!"
+                                exit()
+                        else:
+                            print "[line:" + str(p.lineno(2)) + "]" + "Recursive Struct not allowed!"
+                            exit()
+
+
+
             cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
-                type=p[2].children[0].leaf["type"],
+                type= type1,
                 width=p[2].children[0].leaf["width"],
                 offset=cur_offset[len(cur_offset) - 1])
             cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
