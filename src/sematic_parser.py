@@ -1934,8 +1934,6 @@ def p_Expression(p):
     if len(p) == 2:
         p[1].leaf["label"] = "Expression"
         p[0] = p[1]
-        p[0].leaf["code"] = []
-        p[0].leaf["place"] = "rand"
     else:
         p[4].leaf["label"] = "Expression"
         type1 = p[1].leaf["type"]
