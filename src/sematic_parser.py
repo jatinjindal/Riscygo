@@ -15,6 +15,7 @@ for_count = 0
 default_count = 0
 cur_symtab, cur_offset = [], []
 case_count = 0
+compiler_count=0
 
 
 class symtab:
@@ -45,11 +46,12 @@ class structtab:
 
 
 class values:
-    def __init__(self, type=None, width=0, offset=None, args=None):
+    def __init__(self, type=None, width=0, offset=None, args=None,place=None):
         self.type = type
         self.offset = offset
         self.width = width
         self.args = args
+        self.place = place
 
 
 def lookup_top(table, id):
@@ -152,6 +154,11 @@ def check_type(type1, type2, table):
     elif type2[0] == 5:
         return check_type(type1,table.typedef_map[type2[1]]["type"],table)
 
+
+def generate_compilername():
+    global compiler_count
+    compiler_count+=1
+    return "$t_"+str(compiler_count)
 
 def generate_name():
     global struct_count
@@ -1124,8 +1131,9 @@ def p_ExpressionStmt(p):
     p[0] = p[1]
     p[0].leaf["label"] = "ExpressionStmt"
     if "statement" not in p[1].leaf:
-            print "Only function Declarations can be Expression Statements.Error at lineno " +str(p.lineno(1))
+            print "Only function Callings can be Expression Statements.Error at lineno " +str(p.lineno(1))
             exit()
+
 
 
 
@@ -1256,15 +1264,15 @@ def p_Assignments(p):
 
 def p_ShortVarDecl(p):
     '''
-    ShortVarDecl : ID AUTOASIGN RepeatNewline Expression
+    ShortVarDecl : ID AUTOASIGN RepeatNewline BasicLit
     '''
     p[0] = Node("void", [Node("void",[],{"label":p[1]}), Node("void", [], {"label": p[2]}), p[4]],
                 {"label": "Assignment"})
 
     t=lookup(cur_symtab[-1],p[1])
     if t is None:
-        cur_symtab[-1].data[p[1]]=values(type=p[4].leaf["type"],offset=cur_offset[-1],width=p[4].leaf["width"])
-        cur_offset[-1]+=p[4].leaf["width"]
+        cur_symtab[-1].data[p[1]]=values(type=p[4].children[0].leaf["type"],offset=cur_offset[-1],width=p[4].children[0].leaf["width"])
+        cur_offset[-1]+=p[4].children[0].leaf["width"]
     else:
         print "Variable already declared.Error at lineno " +str(p.lineno(1))
         exit()
@@ -1989,10 +1997,28 @@ def p_UnaryExp(p):
         #p[1].leaf["label"] = "UnaryExp"
         p[0] = p[1]
     else:
-        p[0] = Node("void", p[1].children + p[3].children,
+        p[0] = Node("void",  p[3].children + p[1].children ,
                     {"label": "BasicLit"})
-        p[0].children[0].leaf["type"] = p[0].children[1].leaf["type"]
-        p[0].children[0].leaf["width"] = p[0].children[1].leaf["width"]
+        type1=first_nontypedef(p[3].children[0].leaf["type"],cur_symtab[-1])
+        
+        if p[1].children[0].leaf["label"] in ["+","-"] :
+            if len(type1)!=1 or not(type1[0]>=3 and type1[0]<=14):
+                print("[line:" + str(p.lineno(1)) + "]" + 'Unary Operation +,- not allowed on given type')
+                exit()
+        elif p[1].children[0].leaf["label"] in ["!"] :
+            if len(type1)!=1 or type1[0]!=1:
+                print("[line:" + str(p.lineno(1)) + "]" + 'Unary Operation ! not allowed on given type')
+                exit()
+        elif p[1].children[0].leaf["label"] in ["*"] :
+            if len(type1) ==1 or type1[0]!=1:
+                print("[line:" + str(p.lineno(1)) + "]" + 'Unary Operation * not allowed on given type')
+                exit()
+            p[0].children[0].leaf["type"]=type1[1:]
+        elif p[1].children[0].leaf["label"] in ["&"] :
+            p[0].children[0].leaf["type"]=[1]+type1
+
+
+
 
 
 def p_UnaryOp(p):
@@ -2069,8 +2095,8 @@ def p_PrimaryExpr(p):
                 if check_type(type_arg[ind],type1[ind],cur_symtab[0])==0:
                     print "[line:" + str(p.lineno(1)) + "]" + "Type Mismatch in function definition"
                     exit()
-            p[0].leaf["type"]=type2
-            p[0].leaf["width"]=cur_symtab[0].data[nam].width
+            p[0].children[0].leaf["type"]=type2
+            p[0].children[0].leaf["width"]=cur_symtab[0].data[nam].width
             p[0].leaf["statement"]=1
             
             
