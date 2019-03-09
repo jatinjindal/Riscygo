@@ -158,15 +158,15 @@ def check_type(type1, type2, table):
 
 
 def address_generate_compilername(table, offset):
-    global compiler_count
+    global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
-    addr_3ac_offset[name] = {table, offset}
+    addr_3ac_offset[name] = [table, offset]
     return name
 
 
 def const_generate_compilername():
-    global compiler_count
+    global const_compiler_count
     const_compiler_count += 1
     return "t_" + str(const_compiler_count)
 
@@ -1796,12 +1796,18 @@ def p_ExpressionList(p):
             "label": "ExpressionList",
             "type": [p[1].leaf["type"]]
         })
+        p[0].leaf['code'] = p[1].leaf['code']
+        p[0].leaf['place'] = [p[1].leaf['place'], ]
     else:
         p[4].children = [p[1]] + p[4].children
-
         new_t = [p[1].leaf["type"]] + p[4].leaf["type"]
         p[0] = p[4]
         p[0].leaf["type"] = new_t
+        p[0].leaf['code'] = p[1].leaf['code']
+        p[0].leaf['place'] = [p[1].leaf['place'], ]
+        for child in p[4].children:
+            p[0].leaf['code'] = p[0].leaf['code'] + child.leaf['code']
+            p[0].leaf['place'].append(child.leaf['place'])
 
 
 def p_Expression(p):
@@ -1832,6 +1838,11 @@ def p_Expression(p):
             {"label": "Expression"})
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
 
 
 def p_Term1(p):
@@ -1863,6 +1874,12 @@ def p_Term1(p):
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
 
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
+
 
 def p_Term2(p):
     '''
@@ -1888,7 +1905,7 @@ def p_Term2(p):
         ], {"label": "Term2"})
         if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                    and type2[0] <= 12):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
         elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                      and type2[0] <= 14):
             p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
@@ -1899,6 +1916,12 @@ def p_Term2(p):
 
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
+
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2].children[0].leaf['label'], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
@@ -1915,7 +1938,7 @@ def p_Term2(p):
 
         if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                    and type2[0] <= 12):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
         elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                      and type2[0] <= 14):
             p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
@@ -1930,6 +1953,11 @@ def p_Term2(p):
 
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2].children[0].leaf['label'], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
 
 
 def p_Relop(p):
@@ -1976,7 +2004,7 @@ def p_Term3(p):
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
 
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -1986,7 +2014,7 @@ def p_Term3(p):
         elif p[2] == '-':
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                          and type2[0] <= 14):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
@@ -2000,7 +2028,7 @@ def p_Term3(p):
         elif p[2] == '+':
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                          and type2[0] <= 14):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
@@ -2017,6 +2045,11 @@ def p_Term3(p):
             print "NOT POSSIBLE ERROR IN p_Term3"
             exit()
 
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
 
 def p_Term4(p):
     '''
@@ -2048,7 +2081,7 @@ def p_Term4(p):
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
 
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -2057,7 +2090,7 @@ def p_Term4(p):
         else:
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                          and type2[0] <= 14):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
@@ -2066,6 +2099,12 @@ def p_Term4(p):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
                 exit()
+
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['place'] = t1
 
 
 def p_Term5(p):
@@ -2078,7 +2117,6 @@ def p_Term5(p):
         p[0] = p[1]
         p[0].leaf['type'] = p[0].children[0].leaf['type']
         p[0].leaf['width'] = p[0].children[0].leaf['width']
-
     else:
         p[3].leaf["label"] = "Term5"
         p[0] = p[3]
@@ -2117,6 +2155,12 @@ def p_UnaryExp(p):
         elif p[1].children[0].leaf["label"] in ["&"]:
             p[0].children[0].leaf["type"] = [1] + type1
 
+        # IR Gen
+        t1 = const_generate_compilername()
+        p[0].leaf['code'] = p[3].leaf['code']
+        p[0].leaf['code'].append([p[1].children[0].leaf['label'], t1, p[3].leaf['place']])
+        p[0].leaf['place'] = t1
+
 
 def p_UnaryOp(p):
     '''
@@ -2142,6 +2186,8 @@ def p_PrimaryExpr(p):
         p[0] = p[1]
     else:
         p[0] = Node("void", p[1].children + [p[2]], {"label": "PrimaryExp"})
+        code = p[1].leaf['code'] + p[2].leaf['code']
+        place = ''
         if p[2].leaf["label"] == "Selector":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
                                       cur_symtab[-1])
@@ -2163,6 +2209,17 @@ def p_PrimaryExpr(p):
                 w = cur_symtab[-1].struct_name_map[type_p[1]].data[nam].width
                 p[0].children[0].leaf["type"] = t
                 p[0].children[0].leaf["width"] = w
+
+                # IR Gen
+                offset = cur_symtab[-1].struct_name_map[type_p[1]].data[nam].offset
+                var1 = p[1].leaf['place']
+                var2 = address_generate_compilername(None, 0)
+                t1 = const_generate_compilername()
+                t2 = const_generate_compilername()
+                code.append(['=', t1, offset])
+                code.append(['copy', t2, var1])
+                code.append(['+', var2, t2, t1])
+                place = var2
         elif p[2].leaf["label"] == "Index":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
                                       cur_symtab[-1])
@@ -2179,6 +2236,18 @@ def p_PrimaryExpr(p):
                     "width"] = p[1].children[0].leaf["width"] / type_p[1]
                 p[0].children[0].leaf["type"] = type_p[2:]
 
+                # IR Gen
+                var1 = p[1].leaf['place']
+                var2 = p[2].leaf['place']
+                var3 = address_generate_compilername(None, 0)
+                t1 = const_generate_compilername()
+                t2 = const_generate_compilername()
+                t3 = const_generate_compilername()
+                code.append(['=', t1, p[0].children[0].leaf['width']])
+                code.append(['*', t2, var2, t1])
+                code.append(['=', t3, var1])
+                code.append(['+', var3, t3, t2])
+                place = var3
         elif p[2].leaf["label"] == "Arguments":
             nam = p[1].children[0].leaf['label']
             if nam not in cur_symtab[0].data:
@@ -2208,6 +2277,19 @@ def p_PrimaryExpr(p):
             p[0].children[0].leaf["width"] = cur_symtab[0].data[nam].width
             p[0].leaf["statement"] = 1
 
+            # IR Gen
+            t1 = const_generate_compilername()
+            code.append(['push'])
+            for i in range(len(type1)):
+                code.append(['push', p[0].leaf['place'][i]])
+            code.append(['call', nam, len(type1)])
+            for i in range(len(type1)):
+                code.append(['pop'])
+            code.append(['pop', t1])
+            place = t1
+        p[0].leaf['place'] = place
+        p[0].leaf['code'] = code
+
 
 # Literal = BasicLit | CompositeLit | FunctionLit .
 def p_Literal(p):
@@ -2228,7 +2310,8 @@ def p_BasicLit(p):
     '''
     p[1].leaf["label"] = "BasicLit"
     p[0] = p[1]
-    p[0].leaf["place"] = const_generate_compilername()
+    p[0].leaf['place'] = const_generate_compilername()
+    p[0].leaf['code'] = [['=', p[0].leaf['place'], p[0].children[0].leaf['label']], ]
 
 
 # int_lit = decimal_lit | octal_lit | hex_lit .
@@ -2582,6 +2665,8 @@ def p_OperandName2(p):
             "marked": 1
         })
     ], {"label": "OperandName2"})
+    p[0].leaf['code'] = []
+    p[0].leaf['place'] = tmp.place
 
 
 def p_Selector(p):
@@ -2590,6 +2675,7 @@ def p_Selector(p):
     '''
     p[0] = Node("void", [Node("void", [], {"label": p[3]})],
                 {"label": "Selector"})
+    p[0].leaf['code'] = []
 
 
 def p_Index(p):
@@ -2601,6 +2687,8 @@ def p_Index(p):
     if len(type1) != 1 or not (type1[0] >= 3 and type1[0] <= 12):
         print("[line:" + str(p.lineno(1)) + "]" + 'Array Index not integer')
         exit()
+    p[0].leaf['code'] = p[3].leaf['code']
+    p[0].leaf['place'] = p[3].leaf['place']
 
 
 # Arguments = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
@@ -2612,9 +2700,13 @@ def p_Argument(p):
     if len(p) == 4:
         p[0] = Node("void", [], {"label": "Arguments"})
         p[0].leaf["type"] = []
+        p[0].leaf['code'] = []
+        p[0].leaf['place'] = []
     else:
         p[0] = Node("void", p[3].children, {"label": "Arguments"})
         p[0].leaf["type"] = p[3].leaf["type"]
+        p[0].leaf['code'] = p[3].leaf['code']
+        p[0].leaf['place'] = p[3].leaf['place']
 
 
 def p_IdentifierList(p):
