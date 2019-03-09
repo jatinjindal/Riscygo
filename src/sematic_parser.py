@@ -560,6 +560,7 @@ def p_Start(p):
     print "Final Code"
     for code in p[0].leaf["code"]:
         print code
+    print addr_3ac_offset
 
 
 def p_SourceFile(p):
@@ -834,7 +835,7 @@ def p_ConstSpec(p):
             else:
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
-                        child.leaf["label"]) + " at line " + str(p.lineno(1))
+                        p[1].children[ind].leaf["label"]) + " at line " + str(p.lineno(1))
 
 
 # TypeDecl = "type" ( TypeSpec | "(" { TypeSpec ";" } ")" ) .
@@ -990,7 +991,7 @@ def p_VarSpec(p):
             else:
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
-                        child.leaf["label"]) + " at line " + str(p.lineno(1))
+                        p[1].children[ind].leaf["label"]) + " at line " + str(p.lineno(1))
 
 
 # FunctionDecl = "func" FunctionName Signature [ FunctionBody ] .
@@ -1923,7 +1924,6 @@ def p_ExpressionList(p):
         for child in p[4].children:
             p[0].leaf['code'] = p[0].leaf['code'] + child.leaf['code']
             p[0].leaf['place'].append(child.leaf['place'])
-    print(p[0].leaf['place'], p[0].leaf['code'])
 
 
 def p_Expression(p):
@@ -2268,26 +2268,51 @@ def p_UnaryExp(p):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation +,- not allowed on given type')
                 exit()
+            # IR Gen
+            t1 = const_generate_compilername()
+            p[0].leaf['code'] = p[3].leaf['code']
+            p[0].leaf['code'].append(
+                [p[1].children[0].leaf['label'], t1, p[3].leaf['place']])
+            p[0].leaf['place'] = t1
+
         elif p[1].children[0].leaf["label"] in ["!"]:
             if len(type1) != 1 or type1[0] != 1:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation ! not allowed on given type')
                 exit()
+            t1 = const_generate_compilername()
+            p[0].leaf['code'] = p[3].leaf['code']
+            p[0].leaf['code'].append(
+                [p[1].children[0].leaf['label'], t1, p[3].leaf['place']])
+            p[0].leaf['place'] = t1
+            
+
         elif p[1].children[0].leaf["label"] in ["*"]:
-            if len(type1) == 1 or type1[0] != 1:
+            if len(type1) == 1 or type1[0] != 1 or p[3].leaf["label"]=="Literal":
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation * not allowed on given type')
                 exit()
             p[0].children[0].leaf["type"] = type1[1:]
-        elif p[1].children[0].leaf["label"] in ["&"]:
-            p[0].children[0].leaf["type"] = [1] + type1
+            t1 = const_generate_compilername()
+            v1 = address_generate_compilername(None,0)
+            p[0].leaf['code'] = p[3].leaf['code']
+            p[0].leaf['code'] += [["=", t1, p[3].leaf['place']],['copy',v1,t1]]
+            p[0].leaf['place'] = v1
+            
 
-        # IR Gen
-        t1 = const_generate_compilername()
-        p[0].leaf['code'] = p[3].leaf['code']
-        p[0].leaf['code'].append(
-            [p[1].children[0].leaf['label'], t1, p[3].leaf['place']])
-        p[0].leaf['place'] = t1
+        elif p[1].children[0].leaf["label"] in ["&"]:
+            if p[3].leaf["label"]=="Literal":
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Unary Operation & not allowed on given type')
+                exit()
+            p[0].children[0].leaf["type"] = [1] + type1
+            t1 = const_generate_compilername()
+            p[0].leaf['code'] = p[3].leaf['code']
+            p[0].leaf['code'].append(
+                ['copy', t1, p[3].leaf['place']])
+            p[0].leaf['place'] = t1
+
+        
 
 
 def p_UnaryOp(p):
@@ -2426,7 +2451,7 @@ def p_Literal(p):
     Literal : BasicLit
             | CompositeLit
     '''
-    #    p[1].leaf["label"] = "Literal"
+    p[1].leaf["label"] = "Literal"
     p[0] = p[1]
 
 
