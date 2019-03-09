@@ -738,11 +738,17 @@ def p_ConstSpec(p):
         for child in p[1].children:
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
+                #3AC-code
+                tmp_name=address_generate_compilername(cur_symtab[-1],cur_offset[-1])
+                
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
                                width=p[2].children[0].leaf["width"],
-                               offset=cur_offset[len(cur_offset) - 1])
+                               offset=cur_offset[len(cur_offset) - 1],
+                               place=tmp_name)
+                p[0].leaf["code"]=[]
+                p[0].leaf["place"]=None
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
@@ -762,6 +768,8 @@ def p_ConstSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1],
                        p[1].children[ind].leaf["label"])
             if t is None:
+                tmp_name=address_generate_compilername(cur_symtab[-1],cur_offset[-1])
+
                 width = p[4].children[ind].leaf["width"]
                 type1 = first_nontypedef(p[2].children[0].leaf["type"],
                                          cur_symtab[-1])
@@ -790,12 +798,17 @@ def p_ConstSpec(p):
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
-                    offset=cur_offset[-1])
+                    offset=cur_offset[-1],
+                    place=tmp_name)
                 cur_offset[-1] += width
+                #3AC-CODE
+                p[0].leaf["place"]=None
+                p[0].leaf["code"]+=(p[4].children[ind].leaf["code"]+[["=",tmp_name,p[4].children[ind].leaf["place"]]])
             else:
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
                         child.leaf["label"]) + " at line " + str(p.lineno(1))
+
 
 
 # TypeDecl = "type" ( TypeSpec | "(" { TypeSpec ";" } ")" ) .
@@ -870,11 +883,17 @@ def p_VarSpec(p):
         for child in p[1].children:
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
+                #3AC-code
+                tmp_name=address_generate_compilername(cur_symtab[-1],cur_offset[-1])
+                
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
                                type=p[2].children[0].leaf["type"],
                                width=p[2].children[0].leaf["width"],
-                               offset=cur_offset[len(cur_offset) - 1])
+                               offset=cur_offset[len(cur_offset) - 1],
+                               place=tmp_name)
+                p[0].leaf["code"]=[]
+                p[0].leaf["place"]=None
                 cur_offset[len(cur_offset) -
                            1] += p[2].children[0].leaf["width"]
             else:
@@ -895,6 +914,7 @@ def p_VarSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1],
                        p[1].children[ind].leaf["label"])
             if t is None:
+                tmp_name=address_generate_compilername(cur_symtab[-1],cur_offset[-1])
                 width = p[5].children[ind].leaf["width"]
                 type1 = first_nontypedef(p[2].children[0].leaf["type"],
                                          cur_symtab[-1])
@@ -923,12 +943,17 @@ def p_VarSpec(p):
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
-                    offset=cur_offset[-1])
+                    offset=cur_offset[-1],
+                    place=tmp_name)
                 cur_offset[-1] += width
+                #3AC-CODE
+                p[0].leaf["place"]=None
+                p[0].leaf["code"]+=(p[5].children[ind].leaf["code"]+[["=",tmp_name,p[5].children[ind].leaf["place"]]])
             else:
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
                         child.leaf["label"]) + " at line " + str(p.lineno(1))
+    
 
 
 # FunctionDecl = "func" FunctionName Signature [ FunctionBody ] .
@@ -940,7 +965,9 @@ def p_FunctionDecl(p):
     '''
     print "-" * 40
     print "function symtab"
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    print "symtab data:"
+    for key,val in cur_symtab[-1].data.iteritems():
+        print key,"-->",val.type
     print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     print "total offset:", cur_offset[len(cur_offset) - 1]
     print "-" * 40
