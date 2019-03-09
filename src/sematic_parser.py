@@ -15,7 +15,8 @@ for_count = 0
 default_count = 0
 cur_symtab, cur_offset = [], []
 case_count = 0
-compiler_count=0
+addr_compiler_count=0
+const_compiler_count=0
 
 
 class symtab:
@@ -155,10 +156,17 @@ def check_type(type1, type2, table):
         return check_type(type1,table.typedef_map[type2[1]]["type"],table)
 
 
-def generate_compilername():
+def address_generate_compilername():
     global compiler_count
-    compiler_count+=1
-    return "$t_"+str(compiler_count)
+    addr_compiler_count+=1
+    return "var_"+str(addr_compiler_count)
+
+def const_generate_compilername():
+    global compiler_count
+    const_compiler_count+=1
+    return "t_"+str(const_compiler_count)
+
+
 
 def generate_name():
     global struct_count
@@ -2071,8 +2079,8 @@ def p_PrimaryExpr(p):
                 print "[line:" + str(p.lineno(1)) + "]" + "Unexpected indexing with the given input "
                 exit()
             else:
-                p[0].children[0].leaf["width"]=p[1].children[0].leaf["width"]/(p[1].children[0].leaf["type"])[1]
-                p[0].children[0].leaf["type"]=(p[1].children[0].leaf["type"])[2:]
+                p[0].children[0].leaf["width"]=p[1].children[0].leaf["width"]/type_p[1]
+                p[0].children[0].leaf["type"]=type_p[2:]
 
         elif p[2].leaf["label"] == "Arguments":
             nam=p[1].children[0].leaf['label']
