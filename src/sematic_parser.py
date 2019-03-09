@@ -950,8 +950,7 @@ def p_VarSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1],
                        p[1].children[ind].leaf["label"])
             if t is None:
-                tmp_name = address_generate_compilername(
-                    cur_symtab[-1], cur_offset[-1])
+                tmp_name = address_generate_compilername(cur_symtab[-1], cur_offset[-1])
                 width = p[5].children[ind].leaf["width"]
                 type1 = first_nontypedef(p[2].children[0].leaf["type"],
                                          cur_symtab[-1])
@@ -964,13 +963,11 @@ def p_VarSpec(p):
                             'Arithmetic operation not allowed for given type')
                         exit()
                     elif (type1[0] >= 3
-                          and type1[0] <= 12) and (type2[0] >= 13
-                                                   and type2[0] <= 14):
+                          and type1[0] <= 12) and (type2[0] >= 13 and type2[0] <= 14):
                         print("[line:" + str(p.lineno(1)) + "]" +
                               'Not possible to assign float to int')
                         exit()
-                    elif not ((type1[0] >= 3 and type1[0] <= 14) and
-                              (type2[0] >= 3 and type2[0] <= 14)):
+                    elif not ((type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3 and type2[0] <= 14)):
                         print(
                             "[line:" + str(p.lineno(1)) + "]" +
                             'Arithmetic operation not allowed for given type')
@@ -1323,10 +1320,7 @@ def p_Assignments(p):
                           'Arithmetic operation not allowed for given type')
                     exit()
             p[0].leaf["code"] += (p[1].children[ind].leaf["code"] +
-                                  p[4].children[ind].leaf["code"] + [[
-                                      "=", p[1].children[ind].leaf["place"],
-                                      p[4].children[ind].leaf["place"]
-                                  ]])
+                                  p[4].children[ind].leaf["code"] + [["=", p[1].children[ind].leaf["place"],p[4].children[ind].leaf["place"]]])
     else:
 
         p[0] = Node("void", [p[1], p[2].children[0], p[4]],
@@ -1442,9 +1436,9 @@ def p_ShortVarDecl(p):
             offset=cur_offset[-1],
             width=p[4].children[0].leaf["width"],
             place=tmp_new)
-        p[0].leaf["code"] = []
-        p[0].leaf["place"] = None
         cur_offset[-1] += p[4].children[0].leaf["width"]
+        p[0].leaf["place"] = None
+        p[0].leaf["code"] = ( p[4].leaf["code"] + [["=", tmp_new, p[4].leaf["place"]]])
     else:
         print "Variable already declared.Error at lineno " + str(p.lineno(1))
         exit()
@@ -1473,6 +1467,8 @@ def p_ReturnStmt(p):
             exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"})],
                     {"label": "ReturnStmt"})
+        p[0].leaf["code"]=[["return"]]
+        p[0].leaf["place"]=None
     else:
         if len(p[2].leaf["type"]) != 1:
             print "[line:" + str(
@@ -1483,6 +1479,9 @@ def p_ReturnStmt(p):
             exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"}), p[2]],
                     {"label": "ReturnStmt"})
+        p[0].leaf["code"]=p[2].leaf["code"]+[["return"]]
+        p[0].leaf["place"]=None
+
 
 
 def p_FallthroughStmt(p):
@@ -1926,7 +1925,7 @@ def p_ExpressionList(p):
         p[0].leaf['code'] = []
         p[0].leaf['place'] = []
         for child in p[4].children:
-            p[0].leaf['code'] = p[0].leaf['code'] + child.leaf['code']
+            p[0].leaf['code'] += child.leaf['code']
             p[0].leaf['place'].append(child.leaf['place'])
 
 
