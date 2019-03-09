@@ -1838,13 +1838,12 @@ def p_ExpressionList(p):
         new_t = [p[1].leaf["type"]] + p[4].leaf["type"]
         p[0] = p[4]
         p[0].leaf["type"] = new_t
-        p[0].leaf['code'] = p[1].leaf['code']
-        p[0].leaf['place'] = [
-            p[1].leaf['place'],
-        ]
+        p[0].leaf['code'] = []
+        p[0].leaf['place'] = []
         for child in p[4].children:
             p[0].leaf['code'] = p[0].leaf['code'] + child.leaf['code']
             p[0].leaf['place'].append(child.leaf['place'])
+    print(p[0].leaf['place'], p[0].leaf['code'])
 
 
 def p_Expression(p):
@@ -2331,7 +2330,7 @@ def p_PrimaryExpr(p):
             t1 = const_generate_compilername()
             code.append(['push'])
             for i in range(len(type1)):
-                code.append(['push', p[0].leaf['place'][i]])
+                code.append(['push', p[2].leaf['place'][i]])
             code.append(['call', nam, len(type1)])
             for i in range(len(type1)):
                 code.append(['pop'])
