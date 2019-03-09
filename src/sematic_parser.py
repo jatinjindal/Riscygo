@@ -2374,7 +2374,7 @@ def p_PrimaryExpr(p):
                 t3 = const_generate_compilername()
                 code.append(['=', t1, p[0].children[0].leaf['width']])
                 code.append(['*', t2, var2, t1])
-                code.append(['=', t3, var1])
+                code.append(['copy', t3, var1])
                 code.append(['+', var3, t3, t2])
                 place = var3
         elif p[2].leaf["label"] == "Arguments":
