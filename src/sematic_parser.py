@@ -1143,10 +1143,12 @@ def p_ParameterDecl(p):
             })
         t = lookup(cur_symtab[len(cur_symtab) - 1], p[1])
         if t is None:
+            t_name=address_generate_compilername(cur_symtab[-1],cur_offset[-1])
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
                 type=p[2].children[0].leaf["type"],
                 width=0,
-                offset=cur_offset[len(cur_offset) - 1])
+                offset=cur_offset[len(cur_offset) - 1],
+                place=t_name)
         else:
             print "[line:" + str(
                 p.lineno(1)) + "]" + "Redeclaration of " + str(
@@ -1191,6 +1193,8 @@ def p_LabeledStmt(p):
         exit()
     else:
         cur_symtab[-1].label_map.append(p[1].children[0].leaf["label"])
+        p[0].leaf["code"]=[['label',p[1].children[0].leaf["label"]]]+p[4].leaf["code"]
+        p[0].leaf["place"]=None
 
 
 def p_Label(p):
