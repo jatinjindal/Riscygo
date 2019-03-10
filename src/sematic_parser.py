@@ -1911,7 +1911,7 @@ def p_ExpressionList(p):
     if len(p) == 2:
         p[0] = Node("void", [p[1]], {
             "label": "ExpressionList",
-            "type": [p[1].leaf["type"]]
+            "type": [p[1].leaf["type"]],
             "width": [p[1].leaf["width"]]
         })
         p[0].leaf['code'] = p[1].leaf['code']
