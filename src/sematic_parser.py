@@ -113,7 +113,7 @@ def check_type_struct(type1, type2, table):
         if type1[1] == type2[1]:
             return check_type_struct(type1[2:], type2[2:], table)
     elif type1[0] == type2[0]:
-        return check_type_struct(type1[1:], type2[1:], table)
+        return check_type_struct(type1[2:], type2[2:], table)
     return False
 
 
@@ -148,7 +148,7 @@ def check_type(type1, type2, table):
             else:
                 return 0
         elif type1[0] == 1 and type2[0] == 1:
-            return check_type(type1[1:], type2[1:], table)
+            return check_type(type1[2:], type2[2:], table)
         elif type1[0] == 4 and type2[0] == 4:
             return check_type(type1[1:], type2[1:], table)
     elif type1[0] == 5:
@@ -805,7 +805,7 @@ def p_ConstSpec(p):
                     if len(type1) != 1 or len(type2) != 1:
                         print(
                             "[line:" + str(p.lineno(1)) + "]" +
-                            'Arithmetic operation not allowed for given type')
+                            'Assignment not allowed for given type')
                         exit()
                     elif (type1[0] >= 3
                           and type1[0] <= 12) and (type2[0] >= 13
@@ -1166,7 +1166,7 @@ def p_Result(p):
     if p[1].leaf['label'] == 'Types':
         p[0].leaf["type"] = p[1].leaf["type"]
     p[1].leaf["label"] = "Return Values"
-    p[0].leaf["width"] = 0
+    p[0].leaf["width"] = p[1].leaf["width"]
 
 
 def p_FunctionBody(p):
@@ -1912,6 +1912,7 @@ def p_ExpressionList(p):
         p[0] = Node("void", [p[1]], {
             "label": "ExpressionList",
             "type": [p[1].leaf["type"]]
+            "width": [p[1].leaf["width"]]
         })
         p[0].leaf['code'] = p[1].leaf['code']
         p[0].leaf['place'] = [
@@ -1920,8 +1921,10 @@ def p_ExpressionList(p):
     else:
         p[4].children = [p[1]] + p[4].children
         new_t = [p[1].leaf["type"]] + p[4].leaf["type"]
+        
         p[0] = p[4]
         p[0].leaf["type"] = new_t
+        p[0].leaf["width"] = [p[1].leaf["width"]] + p[4].leaf["width"] 
         p[0].leaf['code'] = []
         p[0].leaf['place'] = []
         for child in p[4].children:
@@ -1941,7 +1944,7 @@ def p_Expression(p):
         p[4].leaf["label"] = "Expression"
         type1 = p[1].leaf["type"]
         type2 = p[4].leaf["type"]
-        if check_type(type1, type2, cur_symtab[-1]):
+        if check_type(type1, type2, cur_symtab[-1]) == 0:
             print("[line:" + str(p.lineno(1)) + "]" +
                   'logical operation not allowed for given type')
             exit()
@@ -1977,7 +1980,7 @@ def p_Term1(p):
         p[4].leaf["label"] = "Expression"
         type1 = p[1].leaf["type"]
         type2 = p[4].leaf["type"]
-        if check_type(type1, type2, cur_symtab[-1]):
+        if check_type(type1, type2, cur_symtab[-1]) == 0:
             print("[line:" + str(p.lineno(1)) + "]" +
                   'logical operation not allowed for given type')
             exit()
@@ -2060,20 +2063,22 @@ def p_Term2(p):
                  {"label": p[2].children[0].leaf["label"]})
         ], {"label": "Term2"})
 
-        if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                   and type2[0] <= 12):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-        elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                     and type2[0] <= 14):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
-        elif type1[0] == 16 and type2[0] == 16:
-            p[0].leaf["type"], p[0].leaf["width"] = [
-                16
-            ], p[1].leaf["width"] + p[4].leaf["width"]
-        else:
-            print("[line:" + str(p.lineno(1)) + "]" +
-                  'Arithmetic operation not allowed for given type')
-            exit()
+        if check_type(type1,type2,cur_symtab[-1]) == 0:
+
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
+                                                       and type2[0] <= 12):
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
+            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
+                                                         and type2[0] <= 14):
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+            elif type1[0] == 16 and type2[0] == 16:
+                p[0].leaf["type"], p[0].leaf["width"] = [
+                    16
+                ], p[1].leaf["width"] + p[4].leaf["width"]
+            else:
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Arithmetic operation not allowed for given type')
+                exit()
 
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 1
@@ -2161,9 +2166,7 @@ def p_Term3(p):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
                                                          ], 8
             elif type1[0] == 16 and type2[0] == 16:
-                p[0].leaf["type"], p[0].leaf["width"] = [
-                    16
-                ], p[1].leaf["width"] + p[4].leaf["width"]
+                p[0].leaf["type"], p[0].leaf["width"] = [16], p[1].leaf["width"] + p[4].leaf["width"]
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -2295,7 +2298,8 @@ def p_UnaryExp(p):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation * not allowed on given type')
                 exit()
-            p[0].children[0].leaf["type"] = type1[1:]
+            p[0].children[0].leaf["type"] = type1[2:]
+            p[0].children[0].leaf["width"] = type1[1]
             t1 = const_generate_compilername()
             v1 = address_generate_compilername(None,0)
             p[0].leaf['code'] = p[3].leaf['code']
@@ -2308,7 +2312,8 @@ def p_UnaryExp(p):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation & not allowed on given type')
                 exit()
-            p[0].children[0].leaf["type"] = [1] + type1
+            p[0].children[0].leaf["type"] = [1,p[0].children[0].leaf["width"]] + type1
+            p[0].children[0].leaf["width"] = 8
             t1 = const_generate_compilername()
             p[0].leaf['code'] = p[3].leaf['code']
             p[0].leaf['code'].append(
@@ -2612,7 +2617,7 @@ def p_PointerType(p):
         Node(
             "void", p[2].children[0].children, {
                 "label": p[1] + p[2].children[0].leaf["label"],
-                "type": [1] + p[2].children[0].leaf["type"],
+                "type": [1,p[2].leaf["width"]] + p[2].children[0].leaf["type"],
                 "width": 8
             })
     ], {"Label": "PointerType"})
@@ -2684,8 +2689,8 @@ def p_FieldDecl(p):
                 if type1[-2] == 5:
                     val = cur_symtab[-1].typedef_map[type1[-1]]["type"]
                     if len(val) == 0:
-                        if len(type1) > 2:
-                            if type1[-3] != 1:
+                        if len(type1) > 3:
+                            if type1[-4] != 1:
                                 print "[line:" + str(p.lineno(
                                     2)) + "]" + "Recursive Struct not allowed!"
                                 exit()
@@ -2696,9 +2701,9 @@ def p_FieldDecl(p):
 
             cur_symtab[len(cur_symtab) - 1].data[child.leaf["label"]] = values(
                 type=type1,
-                width=p[2].children[0].leaf["width"],
+                width=p[2].leaf["width"],
                 offset=cur_offset[len(cur_offset) - 1])
-            cur_offset[len(cur_offset) - 1] += p[2].children[0].leaf["width"]
+            cur_offset[len(cur_offset) - 1] += p[2].leaf["width"]
         else:
             print "[line:" + str(
                 p.lineno(1)) + "]" + "Redeclaration of " + str(
