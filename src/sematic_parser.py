@@ -12,6 +12,7 @@ struct_count = 0
 if_count = 0
 elif_count = 0
 for_count = 0
+switch_count = 0
 default_count = 0
 cur_symtab, cur_offset = [], []
 case_count = 0
@@ -189,6 +190,12 @@ def generate_forname():
     return "for_" + str(for_count)
 
 
+def generate_switchname():
+    global switch_count
+    switch_count += 1
+    return "switch_" + str(switch_count)
+
+
 def generate_casename():
     global case_count
     case_count += 1
@@ -198,7 +205,7 @@ def generate_casename():
 def generate_defaultname():
     global default_count
     default_count += 1
-    return "case_" + str(default_count)
+    return "default_" + str(default_count)
 
 
 def find_parentfunc(table):
@@ -1018,7 +1025,7 @@ def p_FunctionDecl(p):
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
     p[0] = p[1]
-    p[0].leaf["code"] = [["label", p[1].children[1].leaf["label"]]]
+    p[0].leaf["code"] = [[p[1].children[1].leaf["label"] + ":"]]
     p[0].leaf["code"] += p[2].leaf["code"]
     p[0].leaf["place"] = None
 
@@ -1039,7 +1046,7 @@ def p_FunctionMarker(p):
             width=p[0].children[3].leaf["width"],
             args=p[0].children[2].leaf["type"])
         cur_offset[-2] += p[0].children[3].leaf["width"]
-        cur_symtab[-1].label_map.append(p[3].leaf["label"])
+        cur_symtab[-1].label_map.insert(0, p[3].leaf["label"])
     else:
         print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
             p[3].leaf["label"]) + " at line " + str(p.lineno(1))
@@ -1488,7 +1495,9 @@ def p_ReturnStmt(p):
             exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"}), p[2]],
                     {"label": "ReturnStmt"})
-        p[0].leaf["code"] = p[2].leaf["code"] + [["return"]]
+        p[0].leaf["code"] = p[2].leaf["code"] + [[
+            "return", p[2].leaf["place"][0]
+        ]]
         p[0].leaf["place"] = None
 
 
@@ -1505,13 +1514,6 @@ def p_BreakStmt(p):
     BreakStmt : BREAK
               | BREAK Label
     '''
-    if len(p) == 2:
-        p[0] = Node("void", [Node("void", [], {"label": "break"})],
-                    {"label": "BreakStmt"})
-    else:
-        p[0] = Node("void",
-                    [Node("void", [], {"label": "break"}), p[2].children[0]],
-                    {"label": "BreakStmt"})
     top = cur_symtab[len(cur_symtab) - 1]
     while (top.label in ["if", "else", "elif"]):
         top = top.previous
@@ -1520,6 +1522,17 @@ def p_BreakStmt(p):
         print "[line:" + str(
             p.lineno(1)
         ) + "]" + "Break is not inside inside switch or for at ", p.lineno(1)
+        exit()
+
+    if len(p) == 2:
+        p[0] = Node("void", [Node("void", [], {"label": "break"})],
+                    {"label": "BreakStmt"})
+        p[0].leaf["code"] = [["goto ", top.label_map[0] + ".next"]]
+
+    else:
+        p[0] = Node("void",
+                    [Node("void", [], {"label": "break"}), p[2].children[0]],
+                    {"label": "BreakStmt"})
 
 
 def p_ContinueStmt(p):
@@ -1538,6 +1551,8 @@ def p_ContinueStmt(p):
     if len(p) == 2:
         p[0] = Node("void", [Node("void", [], {"label": "continue"})],
                     {"label": "ContinueStmt"})
+        p[0].leaf["code"] = [["goto ", top.label_map[0] + ".post"]]
+
     else:
         p[0] = Node(
             "void",
@@ -1581,6 +1596,19 @@ def p_IfExp(p):
         exit()
     p[0] = Node("void", [p[1], p[3]], {"label": "If_Expression"})
 
+    #IR Code
+    name = p[1].leaf["label"]
+    p[0].leaf["code"] = p[3].leaf["code"] + [[
+        "iffalse ", p[3].leaf["place"], " goto ", name + ".false"
+    ]]
+    p[0].leaf["place"] = None
+    p[0].leaf["label"] = name
+
+    if p[-2] == "else":
+        p[0].leaf["next"] = p[-5].leaf["next"]
+    else:
+        p[0].leaf["next"] = name + ".next"
+
 
 def p_IfStmt(p):
     '''
@@ -1605,10 +1633,16 @@ def p_IfStmt(p):
 
         top = cur_symtab[len(cur_symtab) - 1]
         top.total = cur_offset[len(cur_offset) - 1]
-
-        elif_count = 0
         cur_symtab.pop()
         cur_offset.pop()
+
+        # elif_count = 0
+        p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + [[
+            p[2].leaf["label"] + ".false: "
+        ]]
+        p[0].leaf["place"] = None
+        if p[-1] == "else":
+            p[0].leaf["code"] += [[p[2].leaf["next"] + ":"]]
 
     elif len(p) == 8:
         p[0] = Node("void", [
@@ -1627,13 +1661,24 @@ def p_IfStmt(p):
         top.total = cur_offset[len(cur_offset) - 1]
         cur_symtab.pop()
         cur_offset.pop()
-        elif_count = 0
+
+        p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + p[4].leaf[
+            "code"] + p[6].leaf["code"] + p[7].leaf["code"] + [[
+                p[2].leaf["next"] + ": "
+            ]]
+        p[0].leaf["place"] = None
+
+        # elif_count = a-zA-Z_0-9
 
     elif len(p) == 7:
         p[0] = Node("void", [
             Node("void", [], {"label": "if"}), p[2].children[1], p[3],
             Node("void", [], {"label": "else"}), p[6]
         ], {"label": "IfStmt"})
+
+        p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + p[4].leaf[
+            "code"] + [[p[2].leaf["label"] + ".false: "]] + p[6].leaf["code"]
+        p[0].leaf["place"] = None
 
 
 def p_IfMarker(p):
@@ -1642,14 +1687,21 @@ def p_IfMarker(p):
     '''
     parent = find_parentfunc(cur_symtab[len(cur_symtab) - 1])
     tnew = symtab(cur_symtab[len(cur_symtab) - 1])
+    tnew.label = "if"
+
     if p[-2] == "else":
-        global elif_count
-        name = "elif_" + str(if_count) + "_" + str(elif_count)
-        elif_count += 1
+        # name = p[-5].leaf["label"] + "_1"
         tnew.label = "elif"
-    else:
-        name = generate_ifname()
-        tnew.label = "if"
+        # p[0] = Node("void",[],{"label": name})
+
+        # global elif_count
+        # name = "elif_" + str(if_count) + "_" + str(elif_count)
+        # elif_count += 1
+        # tnew.label = "elif"
+
+    # else:
+    name = generate_ifname()
+    p[0] = Node("void", [], {"label": name})
     print name
     parent.children[name] = tnew
     parent.data[name] = values()
@@ -1674,6 +1726,8 @@ def p_EndIfMarker(p):
 
     cur_symtab.pop()
     cur_offset.pop()
+    p[0] = Node("void", [], {"label": "endif"})
+    p[0].leaf["code"] = [["goto ", p[-2].leaf["next"]]]
 
 
 def p_ElseMarker(p):
@@ -1689,6 +1743,9 @@ def p_ElseMarker(p):
     tnew.label = "else"
     cur_symtab.append(tnew)
     cur_offset.append(0)
+    p[0] = Node("void", [], {"label": "else"})
+
+    p[0].leaf["code"] = [[p[-4].leaf["label"] + ".false:  "]]
 
 
 def p_SwitchStmt(p):
@@ -1700,16 +1757,26 @@ def p_SwitchStmt(p):
 
 def p_ExprSwitchStmt(p):
     '''
-    ExprSwitchStmt : SWITCH RepeatNewline LBRACE RepeatNewline RepeatExprCaseClause RBRACE
-                   | SWITCH RepeatNewline Expression LBRACE RepeatNewline RepeatExprCaseClause RBRACE
+    ExprSwitchStmt : SWITCH RepeatNewline Expression LBRACE RepeatNewline Exp_Inh RepeatExprCaseClause RBRACE
     '''
-    if len(p) == 7:
-        p[0] = Node("void", [Node("void", [], {"label": "switch"}), p[5]],
-                    {"label": "ExprSwitchStmt"})
-    else:
-        p[0] = Node("void",
-                    [Node("void", [], {"label": "switch"}), p[3], p[6]],
-                    {"label": "ExprSwitchStmt"})
+
+    p[0] = Node("void", [Node("void", [], {"label": "switch"}), p[3], p[6]],
+                {"label": "ExprSwitchStmt"})
+
+    code = p[3].leaf["code"]
+    code += p[7].leaf["code1"]
+    code += [["goto ", p[6].leaf["label"] + ".next"]]
+    code += p[7].leaf["code2"]
+    code += [[p[6].leaf["label"] + ".next : "]]
+    p[0].leaf["code"] = code
+
+
+def p_Exp_Inh(p):
+    '''
+    Exp_Inh : empty
+    '''
+    t1 = generate_switchname()
+    p[0] = Node("void", [], {"place": p[-3].leaf["place"], "label": t1})
 
 
 def p_RepeatExprCaseClause(p):
@@ -1720,15 +1787,48 @@ def p_RepeatExprCaseClause(p):
     if len(p) == 3:
         p[2].children = [p[1]] + p[2].children
         p[0] = p[2]
+        if len(p[1].leaf["code1"]) == 1:
+            if len(p[0].leaf["code1"]) == 0:
+                p[0].leaf["code1"] = p[1].leaf["code1"] + p[0].leaf["code1"]
+                p[0].leaf["code2"] = p[1].leaf["code2"] + p[0].leaf["code2"]
+            elif p[0].leaf["code1"][-1][0] == "iftrue ":
+                p[0].leaf["code1"] += p[1].leaf["code1"]
+                p[0].leaf["code2"] = p[1].leaf["code2"] + p[0].leaf["code2"]
+            else:
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Multiple Defaults not allowed')
+                exit()
+
+        else:
+            p[0].leaf["code1"] = p[1].leaf["code1"] + p[0].leaf["code1"]
+            p[0].leaf["code2"] = p[1].leaf["code2"] + p[0].leaf["code2"]
+
     else:
         p[0] = Node("void", [], {"label": "RepeatExprCaseClause"})
+        p[0].leaf["code1"] = []
+        p[0].leaf["code2"] = []
 
 
 def p_ExprCaseClause(p):
     '''
     ExprCaseClause : ExprSwitchCase COLON RepeatNewline StatementList
     '''
-    p[0] = Node("void", p[1].children + [p[4]], {"label": "ExprCaseClause"})
+    p[0] = Node("void", p[1].children + [p[4]], {
+        "label": p[-1].leaf["label"],
+        "place": p[-1].leaf["place"]
+    })
+    t1 = const_generate_compilername()
+    if "default" in p[1].leaf["label"]:
+        code1 = [["goto ", p[1].leaf["label"]]]
+        code2 = [[p[1].leaf["label"] + ":"]] + p[4].leaf["code"]
+    else:
+        code1 = p[1].leaf["code"] + [[
+            "==", t1, p[-1].leaf["place"], p[1].leaf["place"]
+        ], ["iftrue ", t1, "goto ", p[1].leaf["label"]]]
+        code2 = [[p[1].leaf["label"] + ":"]] + p[4].leaf["code"]
+    p[0].leaf["code1"] = code1
+    p[0].leaf["code2"] = code2
+
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
@@ -1742,10 +1842,14 @@ def p_ExprSwitchCase(p):
     '''
     if len(p) == 4:
         p[0] = Node("void", [Node("void", [], {"label": "default"})],
-                    {"label": "ExprSwitchCase"})
+                    {"label": p[2].leaf["label"]})
     else:
-        p[0] = Node("void", [Node("void", [], {"label": "case"}), p[4]],
-                    {"label": "ExprSwitchCase"})
+        p[0] = Node(
+            "void", [Node("void", [], {"label": "case"}), p[4]], {
+                "label": p[2].leaf["label"],
+                "code": p[4].leaf["code"],
+                "place": p[4].leaf["place"]
+            })
 
 
 def p_CaseMarker(p):
@@ -1757,10 +1861,11 @@ def p_CaseMarker(p):
     name = generate_casename()
     parent.children[name] = tnew
     parent.data[name] = values()
-    print name
+    tnew.label_map.insert(0, p[-2].leaf["label"])
     tnew.label = "case"
     cur_symtab.append(tnew)
     cur_offset.append(0)
+    p[0] = Node("void", [], {"label": name})
 
 
 def p_DefaultMarker(p):
@@ -1772,10 +1877,11 @@ def p_DefaultMarker(p):
     name = "default_" + str(if_count)
     parent.children[name] = tnew
     parent.data[name] = values()
-    print name
+    tnew.label_map.insert(0, p[-2].leaf["label"])
     tnew.label = "default"
     cur_symtab.append(tnew)
     cur_offset.append(0)
+    p[0] = Node("void", [], {"label": name})
 
 
 def p_ForStmt(p):
@@ -1784,12 +1890,40 @@ def p_ForStmt(p):
             | FOR ForMarker RepeatNewline Condition Block
             | FOR ForMarker RepeatNewline ForClause Block
     '''
-    if len(p) == 4:
+    if len(p) == 5:
         p[0] = Node("void", [Node("void", [], {"label": "for"}), p[3]],
                     {"label": "ForStmt"})
+        code = p[4].leaf["code"] + [["goto ", p[2].leaf["label"]]]
+
+        for_start = p[2].leaf["label"] + ": "
+        p[0].leaf["code"] = [[for_start]] + code
+
     else:
         p[0] = Node("void", [Node("void", [], {"label": "for"}), p[3], p[4]],
                     {"label": "ForStmt"})
+        if p[4].leaf["label"] == "Condition":
+            code = [[p[2].leaf["label"] + ":"]] + p[4].leaf["code"]
+            code += [[
+                "iffalse ", p[4].leaf["place"], " goto ",
+                p[2].leaf["label"] + ".next"
+            ]]
+            code += p[5].leaf["code"] + [["goto ", p[2].leaf["label"]]]
+            code += [[p[2].leaf["label"] + ".next :"]]
+            p[0].leaf["code"] = code
+        else:
+            code = p[4].leaf["code"][0] + [[p[2].leaf["label"] + ": "]
+                                           ] + p[4].leaf["code"][1]
+            if p[4].leaf["place"] is not None:
+                code += [[
+                    "iffalse ", p[4].leaf["place"], "goto ",
+                    p[2].leaf["label"] + ".next"
+                ]]
+            code += p[5].leaf["code"] + [[
+                p[2].leaf["label"] + ".post:"
+            ]] + p[4].leaf["code"][2] + [["goto ", p[2].leaf["label"]]
+                                         ] + [[p[2].leaf["label"] + ".next: "]]
+            p[0].leaf["code"] = code
+            p[0].leaf["label"] = None
 
     print "-" * 40
     print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
@@ -1814,8 +1948,10 @@ def p_ForMarker(p):
     parent.children[name] = tnew
     parent.data[name] = values()
     tnew.label = "for"
+    tnew.label_map.insert(0, name)
     cur_symtab.append(tnew)
     cur_offset.append(0)
+    p[0] = Node("void", [], {"label": name})
 
 
 def p_ForClause(p):
@@ -1835,6 +1971,8 @@ def p_ForClause(p):
             Node("void", [], {"label": "Condition"}),
             Node("void", [], {"label": "PostStmt"})
         ], {"label": "ForClause"})
+        p[0].leaf["place"] = None
+        p[0].leaf["code"] = [[], [], []]
     elif len(p) == 4:
         if p[2] == ";" and p[3] == ";":
             p[0] = Node("void", [
@@ -1842,33 +1980,52 @@ def p_ForClause(p):
                 Node("void", [], {"label": "Condition"}),
                 Node("void", [], {"label": "PostStmt"})
             ], {"label": "ForClause"})
+            p[0].leaf["place"] = None
+            p[0].leaf["code"] = [p[1].leaf["code"], [], []]
         elif p[1] == ";" and p[3] == ";":
             p[0] = Node("void", [
                 Node("void", [], {"label": "InitStmt"}), p[2],
                 Node("void", [], {"label": "PostStmt"})
             ], {"label": "ForClause"})
+            p[0].leaf["place"] = p[2].leaf["place"]
+            p[0].leaf["code"] = [[], p[2].leaf["code"], []]
         else:
             p[0] = Node("void", [
                 Node("void", [], {"label": "InitStmt"}),
                 Node("void", [], {"label": "Condition"}), p[3]
             ], {"label": "ForClause"})
+            p[0].leaf["place"] = None
+            p[0].leaf["code"] = [[], [], p[3].leaf["code"]]
+
     elif len(p) == 5:
         if p[2] == ";" and p[4] == ";":
             p[0] = Node("void",
                         [p[1], p[3],
                          Node("void", [], {"label": "PostStmt"})],
                         {"label": "ForClause"})
+            p[0].leaf["place"] = p[3].leaf["place"]
+            p[0].leaf["code"] = [p[1].leaf["code"], p[3].leaf["code"], []]
         elif p[2] == ";" and p[3] == ";":
             p[0] = Node(
                 "void",
                 [p[1], Node("void", [], {"label": "Condition"}), p[4]],
                 {"label": "ForClause"})
+            p[0].leaf["place"] = None
+            p[0].leaf["code"] = [p[1].leaf["code"], [], p[4].leaf["code"]]
+
         else:
             p[0] = Node("void",
                         [Node("void", [], {"label": "InitStmt"}), p[2], p[4]],
                         {"label": "ForClause"})
+            p[0].leaf["place"] = p[2].leaf["place"]
+            p[0].leaf["code"] = [[], p[2].leaf["code"], p[4].leaf["code"]]
+
     else:
         p[0] = Node("void", [p[1], p[3], p[5]], {"label": "ForClause"})
+        p[0].leaf["place"] = p[3].leaf["place"]
+        p[0].leaf["code"] = [
+            p[1].leaf["code"], p[3].leaf["code"], p[5].leaf["code"]
+        ]
 
 
 def p_InitStmt(p):
@@ -2914,6 +3071,7 @@ def p_terminator(p):
     '''
     terminator : SEMI
     '''
+    p[0] = p[1]
 
 
 def p_StatementEnd(p):
