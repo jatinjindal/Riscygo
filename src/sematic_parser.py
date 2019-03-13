@@ -767,14 +767,14 @@ def p_ConstSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
                 #3AC-code
-                tmp_name = address_generate_compilername(
-                    cur_symtab[-1], cur_offset[-1])
+                tmp_name = address_generate_compilername(cur_symtab[-1], cur_offset[-1])
 
                 cur_symtab[-1].data[child.leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=p[2].children[0].leaf["width"],
                     offset=cur_offset[-1],
                     place=tmp_name)
+                addr_3ac_offset[tmp_name].append(p[2].children[0].lead['width'])
                 p[0].leaf["code"] = []
                 p[0].leaf["place"] = None
                 cur_offset[len(cur_offset) -
@@ -831,6 +831,7 @@ def p_ConstSpec(p):
                     width=width,
                     offset=cur_offset[-1],
                     place=tmp_name)
+                addr_3ac_offset[tmp_name].append(width)
                 cur_offset[-1] += width
                 #3AC-CODE
                 p[0].leaf["place"] = None
@@ -930,6 +931,7 @@ def p_VarSpec(p):
                                width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1],
                                place=tmp_name)
+                addr_3ac_offset[tmp_name].append(p[2].children[0].leaf["width"])
                 p[0].leaf["code"] = []
                 p[0].leaf["place"] = None
                 cur_offset[len(cur_offset) -
@@ -988,6 +990,7 @@ def p_VarSpec(p):
                     width=width,
                     offset=cur_offset[-1],
                     place=tmp_name)
+                addr_3ac_offset[tmp_name].append(width)
                 cur_offset[-1] += width
                 #3AC-CODE
                 p[0].leaf["place"] = None
@@ -1157,6 +1160,7 @@ def p_ParameterDecl(p):
                 width=0,
                 offset=cur_offset[len(cur_offset) - 1],
                 place=t_name)
+            addr_3ac_offset[t_name].append(0)
         else:
             print "[line:" + str(
                 p.lineno(1)) + "]" + "Redeclaration of " + str(
@@ -1451,6 +1455,7 @@ def p_ShortVarDecl(p):
             offset=cur_offset[-1],
             width=p[4].children[0].leaf["width"],
             place=tmp_new)
+        addr_3ac_offset[tmp_new].append(p[4].children[0].leaf["width"])
         cur_offset[-1] += p[4].children[0].leaf["width"]
         p[0].leaf["place"] = None
         p[0].leaf["code"] = (
@@ -2485,8 +2490,7 @@ def p_UnaryExp(p):
             p[0].leaf['place'] = t1
 
         elif p[1].children[0].leaf["label"] in ["*"]:
-            if len(type1
-                   ) == 1 or type1[0] != 1 or p[3].leaf["label"] == "Literal":
+            if len(type1) == 1 or type1[0] != 1 or p[3].leaf["label"] == "Literal":
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation * not allowed on given type')
                 exit()
@@ -2494,6 +2498,7 @@ def p_UnaryExp(p):
             p[0].children[0].leaf["width"] = type1[1]
             t1 = const_generate_compilername()
             v1 = address_generate_compilername(None, 0)
+            addr_3ac_offset[v1].append(p[0].children[0].leaf["width"])
             p[0].leaf['code'] = p[3].leaf['code']
             p[0].leaf['code'] += [["=", t1, p[3].leaf['place']],
                                   ['copy', v1, t1]]
@@ -2567,6 +2572,7 @@ def p_PrimaryExpr(p):
                     type_p[1]].data[nam].offset
                 var1 = p[1].leaf['place']
                 var2 = address_generate_compilername(None, 0)
+                addr_3ac_offset[var2].append(w)
                 t1 = const_generate_compilername()
                 t2 = const_generate_compilername()
                 t3 = const_generate_compilername()
@@ -2595,6 +2601,7 @@ def p_PrimaryExpr(p):
                 var1 = p[1].leaf['place']
                 var2 = p[2].leaf['place']
                 var3 = address_generate_compilername(None, 0)
+                addr_3ac_offset[var3].append(p[0].children[0].leaf['width'])
                 t1 = const_generate_compilername()
                 t2 = const_generate_compilername()
                 t3 = const_generate_compilername()
