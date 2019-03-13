@@ -2289,6 +2289,7 @@ def p_Term3(p):
         type1 = first_nontypedef(p[4].leaf['type'], cur_symtab[-1])
         type2 = first_nontypedef(p[1].leaf['type'], cur_symtab[-1])
 
+        f1, f2 = 0, 0
         if len(type1) != 1 or len(type2) != 1:
             print("[line:" + str(p.lineno(1)) + "]" +
                   'Arithmetic operation not allowed for given type')
@@ -2300,9 +2301,7 @@ def p_Term3(p):
             {"label": "Term3"})
         #Only Integers allowed
         if p[2] != '+' and p[2] != '-':
-            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                       and type2[0] <= 12):
-
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3 and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
@@ -2314,10 +2313,15 @@ def p_Term3(p):
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                         and type2[0] <= 14):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
-                                                         ], 8
+                p[2] = '-int'
+            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3 and type2[0] <= 14):
+                if type1[0] >= 3 and type1[0] <= 12:
+                    f1 = 1
+                if type2[0] >= 3 and type2[0] <= 12:
+                    f2 = 1
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[2] = '-float'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -2325,17 +2329,20 @@ def p_Term3(p):
 
         #Only Integers and floats and strings allowed
         elif p[2] == '+':
-            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                       and type2[0] <= 12):
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3 and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                         and type2[0] <= 14):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
-                                                         ], 8
+                p[2] = '+int'
+            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3 and type2[0] <= 14):
+                if type1[0] >= 3 and type1[0] <= 12:
+                    f1 = 1
+                if type2[0] >= 3 and type2[0] <= 12:
+                    f2 = 1
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[2] = '+float'
             elif type1[0] == 16 and type2[0] == 16:
-                p[0].leaf["type"], p[0].leaf["width"] = [
-                    16
-                ], p[1].leaf["width"] + p[4].leaf["width"]
+                p[0].leaf["type"], p[0].leaf["width"] = [16], p[1].leaf["width"] + p[4].leaf["width"]
+                p[2] = '+string'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -2346,9 +2353,15 @@ def p_Term3(p):
 
         # IR Gen
         t1 = const_generate_compilername()
+        t2 = const_generate_compilername()
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append(
-            [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        if f1 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
+            p[4].leaf['place'] = t2
+        if f2 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
+            p[1].leaf['place'] = t2
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
 
 
@@ -2373,15 +2386,14 @@ def p_Term4(p):
             {"label": "Term4"})
         type1 = first_nontypedef(p[4].leaf['type'], cur_symtab[-1])
         type2 = first_nontypedef(p[1].leaf['type'], cur_symtab[-1])
+        f1, f2 = 0, 0
         if len(type1) != 1 or len(type2) != 1:
             print("[line:" + str(p.lineno(1)) + "]" +
                   'Arithmetic operation not allowed for given type')
             exit()
         #Only Integers allowed
         if p[2] != '*' and p[2] != '/':
-            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                       and type2[0] <= 12):
-
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3 and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
@@ -2389,13 +2401,17 @@ def p_Term4(p):
                 exit()
         #Both integers and float
         else:
-            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                       and type2[0] <= 12):
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3 and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                         and type2[0] <= 14):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
-                                                         ], 8
+                p[2] = p[2] + 'int'
+            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3 and type2[0] <= 14):
+                if type1[0] >= 3 and type1[0] <= 12:
+                    f1 = 1
+                if type2[0] >= 3 and type2[0] <= 12:
+                    f2 = 1
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[2] = p[2] + 'float'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
@@ -2403,9 +2419,16 @@ def p_Term4(p):
 
         # IR Gen
         t1 = const_generate_compilername()
+        t2 = const_generate_compilername()
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append(
-            [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        if f1 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
+            p[4].leaf['place'] = t2
+        if f2 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
+            p[1].leaf['place'] = t2
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
 
 
