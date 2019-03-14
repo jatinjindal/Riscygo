@@ -2095,6 +2095,7 @@ def p_ExpressionList(p):
                    | Expression COMMA RepeatNewline ExpressionList
     '''
     if len(p) == 2:
+
         p[0] = Node(
             'void', [p[1]], {
                 'label': 'ExpressionList',
