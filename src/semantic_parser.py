@@ -6,7 +6,7 @@ from collections import OrderedDict
 import ply.lex as lex
 import ply.yacc as yacc
 
-gcounter, outfile = 0, None
+gcounter, out_ir, out_st = 0, None, None
 
 struct_count = 0
 if_count = 0
@@ -32,20 +32,21 @@ class symtab:
         self.label_map = []
         self.struct_name_map = {}
         if previous is not None:
-            self.typedef_map = previous.typedef_map
-            self.label_map = previous.label_map
-            self.struct_name_map = previous.struct_name_map
+            self.typedef_map = previous.typedef_map.copy()
+            self.label_map += previous.label_map
+            self.struct_name_map = previous.struct_name_map.copy()
 
 
 class structtab:
     def __init__(self, previous=None):
+        self.label = 'struct'
         self.data = OrderedDict()
         self.total = 0
         self.typedef_map = {}
         self.struct_name_map = {}
         if previous is not None:
-            self.typedef_map = previous.typedef_map
-            self.struct_name_map = previous.struct_name_map
+            self.typedef_map = previous.typedef_map.copy()
+            self.struct_name_map = previous.struct_name_map.copy()
 
 
 class values:
@@ -548,26 +549,40 @@ def t_error(t):
     t.lexer.skip(1)
 
 
+def dump_st():
+    for i in cur_symtab[-1].data:
+        val = cur_symtab[-1].data[i]
+        out_st.write(cur_symtab[-1].label + ',')
+        out_st.write(i + ',')
+        out_st.write(str(val.type) + ',')
+        out_st.write(str(val.offset) + ',')
+        out_st.write(str(val.width) + ',')
+        out_st.write(str(val.args) + ',')
+        out_st.write(str(val.place) + ',')
+        out_st.write(str(cur_symtab[-1].typedef_map) + '\n')
+
+
 def p_Start(p):
     '''
     Start : SourceFile
     '''
-    print "Succesfully completed."
+    # print "Succesfully completed."
     p[0] = p[1]
-    dfs(p[0], 0)
-    outfile.write("}")
-    print "-" * 40
-    print "main symtab"
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-    print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "typedef_map", cur_symtab[len(cur_symtab) - 1].typedef_map
-    print "struct_name_map", cur_symtab[len(cur_symtab) - 1].struct_name_map
-    print "-" * 40
-    print "Final Code"
+    dump_st()
+    # print '-' * 40
+    # print "main symtab"
+    # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    # print "total offset:", cur_offset[len(cur_offset) - 1]
+    # print "typedef_map", cur_symtab[len(cur_symtab) - 1].typedef_map
+    # print "struct_name_map", cur_symtab[len(cur_symtab) - 1].struct_name_map
+    # print '-' * 40
     for code in p[0].leaf["code"]:
-        print ', '.join(map(lambda x: str(x), code))
-    print addr_3ac_offset
+        out_ir.write(','.join(map(lambda x: str(x).strip(), code)) + '\n')
+    out_st.write('-' * 60 + '\n')
+    out_st.write('tmp-label,offset,width\n')
+    for i in addr_3ac_offset:
+        out_st.write(i + ',' + str(addr_3ac_offset[i][1]) + ',' + str(addr_3ac_offset[i][2]) + '\n')
 
 
 def p_SourceFile(p):
@@ -893,9 +908,7 @@ def p_K(p):
             "width": 0,
         }
     else:
-        print "[line:" + str(p.lineno(
-            -1)) + "]" + "Redeclaration of " + p[-1] + " at line " + str(
-                p.lineno(-1))
+        print "[line:" + str(p.lineno(-1)) + "]" + "Redeclaration of " + p[-1] + " at line " + str(p.lineno(-1))
         exit()
 
 
@@ -1011,14 +1024,15 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
-    print "-" * 40
-    print "function symtab"
-    print "symtab data:"
-    for key, val in cur_symtab[-1].data.iteritems():
-        print key, "-->", val.type
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-    print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-" * 40
+    dump_st()
+    # print "-" * 40
+    # print "function symtab"
+    # print "symtab data:"
+    # for key, val in cur_symtab[-1].data.iteritems():
+    #     print key, "-->", val.type
+    # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    # print "total offset:", cur_offset[len(cur_offset) - 1]
+    # print "-" * 40
     top = cur_symtab[-1]
     top.total = cur_offset[-1]
     cur_symtab.pop()
@@ -1629,12 +1643,13 @@ def p_IfStmt(p):
             "void",
             [Node("void", [], {"label": "if"}), p[2].children[1], p[3]],
             {"label": "IfStmt"})
-        print "-" * 40
-        print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
-        print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-        print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-        print "total offset:", cur_offset[len(cur_offset) - 1]
-        print "-" * 40
+        dump_st()
+        # print "-" * 40
+        # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
+        # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+        # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+        # print "total offset:", cur_offset[len(cur_offset) - 1]
+        # print "-" * 40
 
         top = cur_symtab[len(cur_symtab) - 1]
         top.total = cur_offset[len(cur_offset) - 1]
@@ -1655,12 +1670,13 @@ def p_IfStmt(p):
             Node("void", [], {"label": "else"}), p[7]
         ], {"label": "IfStmt"})
 
-        print "-" * 40
-        print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
-        print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-        print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-        print "total offset:", cur_offset[len(cur_offset) - 1]
-        print "-" * 40
+        dump_st()
+        # print "-" * 40
+        # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
+        # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+        # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+        # print "total offset:", cur_offset[len(cur_offset) - 1]
+        # print "-" * 40
 
         top = cur_symtab[len(cur_symtab) - 1]
         top.total = cur_offset[len(cur_offset) - 1]
@@ -1707,7 +1723,6 @@ def p_IfMarker(p):
     # else:
     name = generate_ifname()
     p[0] = Node("void", [], {"label": name})
-    print name
     parent.children[name] = tnew
     parent.data[name] = values()
     cur_symtab.append(tnew)
@@ -1722,12 +1737,13 @@ def p_EndIfMarker(p):
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
 
-    print "-" * 40
-    print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-    print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-" * 40
+    dump_st()
+    # print "-" * 40
+    # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
+    # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    # print "total offset:", cur_offset[len(cur_offset) - 1]
+    # print "-" * 40
 
     cur_symtab.pop()
     cur_offset.pop()
@@ -1744,7 +1760,6 @@ def p_ElseMarker(p):
     name = "else_" + str(if_count)
     parent.children[name] = tnew
     parent.data[name] = values()
-    print name
     tnew.label = "else"
     cur_symtab.append(tnew)
     cur_offset.append(0)
@@ -1930,12 +1945,13 @@ def p_ForStmt(p):
             p[0].leaf["code"] = code
             p[0].leaf["label"] = None
 
-    print "-" * 40
-    print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
-    print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
-    print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
-    print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-" * 40
+    dump_st()
+    # print "-" * 40
+    # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
+    # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
+    # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
+    # print "total offset:", cur_offset[len(cur_offset) - 1]
+    # print "-" * 40
 
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
@@ -2831,13 +2847,14 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
-    print "-" * 40
-    print "struct symtab"
-    print "symtab data:\n"
-    for key, val in cur_symtab[-1].data.iteritems():
-        print key, "-->type: ", val.type, " width: ", val.width
-    print "total offset:", cur_offset[len(cur_offset) - 1]
-    print "-" * 40
+    dump_st()
+    # print "-" * 40
+    # print "struct symtab"
+    # print "symtab data:\n"
+    # for key, val in cur_symtab[-1].data.iteritems():
+    #     print key, "-->type: ", val.type, " width: ", val.width
+    # print "total offset:", cur_offset[len(cur_offset) - 1]
+    # print "-" * 40
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
     cur_symtab.pop()
@@ -2890,7 +2907,7 @@ def p_FieldDecl(p):
         if t is None:
             type1 = p[2].children[0].leaf["type"]
             if len(type1) > 1:
-                if type1[-2] == 5:
+                if type1[-2] == 5 and len(type1) % 2 == 0:
                     val = cur_symtab[-1].typedef_map[type1[-1]]["type"]
                     if len(val) == 0:
                         if len(type1) > 3:
@@ -3129,21 +3146,24 @@ def p_error(p):
 
 
 def main():
-    global outfile
+    global out_ir, out_st
     global parser
 
     parser = argparse.ArgumentParser(description='A Parser for Golang')
-    parser.add_argument('--output', required=True, help='output dot file')
+    parser.add_argument('--ir', required=True, help='Output file for 3 Address Code')
+    parser.add_argument('--st', required=True, help='Output file for Symbol Table')
     parser.add_argument('input', help='input golang file')
     args = parser.parse_args()
     with open(args.input, 'r') as f:
         program = ''.join(f.readlines())
     lexer = lex.lex()
     parser = yacc.yacc()
-    outfile = open(args.output, 'w+')
-    outfile.write("digraph G{\n")
+    out_ir = open(args.ir, 'w+')
+    out_st = open(args.st, 'w+')
+    out_st.write('scope-type,label,type,offset,width,args,place,typedef-map\n')
     yacc.parse(program, tracking=True)
-    outfile.close()
+    out_ir.close()
+    out_st.close()
 
 
 if __name__ == '__main__':
