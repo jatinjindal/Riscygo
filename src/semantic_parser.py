@@ -1111,6 +1111,15 @@ def p_Signature(p):
         ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
+    running_offset=-8
+    for i in range(0,len(p[1].leaf["list"])):
+        type1=first_nontypedef(p[1].leaf["type"][i],cur_symtab[-1])
+        if type1[0]==2:
+            running_offset-=8
+        else:
+            running_offset-=p[1].leaf["width"][i]
+        cur_symtab[-1].data[p[1].leaf["list"][i]].offset=running_offset
+
 
 
 # Parameters can't end in ,
@@ -1126,13 +1135,15 @@ def p_Parameters(p):
         ], {
             "label": "Arguments",
             "type": [],
-            "width": 0
+            "width": 0,
+            "list":[]
         })
     else:
         p[0] = Node("void", p[3].children, {
             "label": "Arguments",
             "type": p[3].leaf["type"],
-            "width": 0
+            "width": p[3].leaf["width"],
+            "list":p[3].leaf["label"]
         })
 
 
@@ -1142,8 +1153,8 @@ def p_ParameterList(p):
     '''
     p[2].children = [p[1]] + p[2].children
     p[2].leaf["type"].insert(0, p[1].leaf["type"])
-    p[2].leaf["width"] = 0
-    p[2].leaf["label"] = "ParameterList"
+    p[2].leaf["width"].insert(0,p[1].leaf["width"])
+    p[2].leaf["label"].insert(0,p[1].leaf["label"])
     p[0] = p[2]
 
 
@@ -1153,11 +1164,13 @@ def p_RepeatParameterDecl(p):
                         | empty
     '''
     if len(p) == 2:
-        p[0] = Node("void", [], {"label": "RepeatDecl", "type": []})
+        p[0] = Node("void", [], {"label": [], "type": [],"width":[]})
     else:
         p[4].children = [p[3]] + p[4].children
         p[0] = p[4]
         p[0].leaf["type"].insert(0, p[3].leaf["type"])
+        p[0].leaf["width"].insert(0,p[3].leaf["width"])
+        p[0].leaf["label"].insert(0,p[3].leaf["label"])
 
 
 def p_ParameterDecl(p):
@@ -1168,8 +1181,9 @@ def p_ParameterDecl(p):
     if len(p) == 3:
         p[0] = Node(
             "void", p[2].children[0].children, {
-                "label": p[1] + " " + str(p[2].children[0].leaf["label"]),
-                "type": p[2].children[0].leaf["type"]
+                "label": p[1] ,
+                "type": p[2].children[0].leaf["type"],
+                "width": p[2].children[0].leaf["width"]
             })
         t = lookup(cur_symtab[len(cur_symtab) - 1], p[1])
         if t is None:
@@ -1177,7 +1191,7 @@ def p_ParameterDecl(p):
                                                    cur_offset[-1])
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
                 type=p[2].children[0].leaf["type"],
-                width=0,
+                width=p[2].children[0].leaf["width"],
                 offset=cur_offset[len(cur_offset) - 1],
                 place=t_name)
             addr_3ac_offset[t_name].append(0)
