@@ -1111,8 +1111,8 @@ def p_Signature(p):
         ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
-    running_offset=-8
-    for i in range(0,len(p[1].leaf["list"])):
+    running_offset=-16
+    for i in reversed(range(0,len(p[1].leaf["list"]))):
         type1=first_nontypedef(p[1].leaf["type"][i],cur_symtab[-1])
         if type1[0]==2:
             running_offset-=8
