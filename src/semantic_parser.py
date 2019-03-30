@@ -371,6 +371,9 @@ reserved = {
     'import': 'IMPORT',
     'return': 'RETURN',
     'var': 'VAR',
+    'printInt':'PRINTINT',
+    'printStr':'PRINTSTR',
+    'scanInt':'SCANINT'
 }
 
 types = {
@@ -742,6 +745,8 @@ def p_Statement(p):
               | SwitchStmt
               | ForStmt
               | DeferStmt
+              | PrintStmt
+              | ScanIntStmt
     '''
     p[1].leaf["label"] = "Statement"
     p[0] = p[1]
@@ -789,7 +794,7 @@ def p_ConstSpec(p):
                     width=p[2].children[0].leaf["width"],
                     offset=cur_offset[-1],
                     place=tmp_name)
-                addr_3ac_offset[tmp_name].append(p[2].children[0].lead['width'])
+                addr_3ac_offset[tmp_name].append(p[2].children[0].leaf['width'])
                 p[0].leaf["code"] = []
                 p[0].leaf["place"] = None
                 cur_offset[len(cur_offset) -
@@ -1024,7 +1029,7 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
-    dump_st()
+    
     # print "-" * 40
     # print "function symtab"
     # print "symtab data:"
@@ -1035,6 +1040,7 @@ def p_FunctionDecl(p):
     # print "-" * 40
     top = cur_symtab[-1]
     top.total = cur_offset[-1]
+    dump_st()
     cur_symtab.pop()
     cur_offset.pop()
     #t = lookup(cur_symtab[-1], p[1].children[1].leaf["label"])
@@ -1670,7 +1676,7 @@ def p_IfStmt(p):
             Node("void", [], {"label": "else"}), p[7]
         ], {"label": "IfStmt"})
 
-        dump_st()
+        
         # print "-" * 40
         # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
         # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
@@ -1680,6 +1686,7 @@ def p_IfStmt(p):
 
         top = cur_symtab[len(cur_symtab) - 1]
         top.total = cur_offset[len(cur_offset) - 1]
+        dump_st()
         cur_symtab.pop()
         cur_offset.pop()
 
@@ -1945,7 +1952,7 @@ def p_ForStmt(p):
             p[0].leaf["code"] = code
             p[0].leaf["label"] = None
 
-    dump_st()
+    
     # print "-" * 40
     # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
     # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
@@ -1955,6 +1962,7 @@ def p_ForStmt(p):
 
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
+    dump_st()
     cur_symtab.pop()
     cur_offset.pop()
 
@@ -2088,6 +2096,31 @@ def p_DeferStmt(p):
         [Node("void", [], {"label": "defer"})] + p[2].children + [p[3]],
         {"label": "DeferStmt"})
 
+def p_PrintStmt(p):
+    '''
+    PrintStmt : PrintIntStmt
+              | PrintStrStmt
+    '''
+    p[0]=p[1]
+
+def p_PrintIntStmt(p):
+    '''
+    PrintIntStmt : PRINTINT Expression
+    '''
+    p[0]=Node("void",[Node("void",[],{"label":"printInt"}),p[2]],{"label":"printInt","code":["printInt",p[2].leaf["place"]]})
+
+
+def p_PrintStrStmt(p):
+    '''
+    PrintStrStmt : PRINTSTR Expression
+    '''
+    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":["printStr",p[2].leaf["place"]]})
+
+def p_ScanIntStmt(p):
+    '''
+    ScanIntStmt : SCANINT Expression
+    '''
+    p[0]=Node("void",[Node("void",[],{"label":"ScanInt"}),p[2]],{"label":"ScanInt","code":["ScanInt",p[2].leaf["place"]]})
 
 def p_ExpressionList(p):
     '''
@@ -2662,7 +2695,13 @@ def p_PrimaryExpr(p):
             t1 = const_generate_compilername()
             code.append(['push'])
             for i in range(len(type1)):
-                code.append(['push', p[2].leaf['place'][i]])
+                type3=first_nontypedef(p[2].leaf['type'][i],cur_symtab[-1])
+                if type3[0]==2:
+                    t=const_generate_compilername()
+                    code.append(['copy',t,p[2].leaf['place'][i]])
+                    code.append(['push', t])
+                else:    
+                    code.append(['push', p[2].leaf['place'][i]])
             code.append(['call', nam, len(type1)])
             for i in range(len(type1)):
                 code.append(['pop'])
@@ -2848,7 +2887,7 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
-    dump_st()
+    
     # print "-" * 40
     # print "struct symtab"
     # print "symtab data:\n"
@@ -2858,6 +2897,13 @@ def p_StructType(p):
     # print "-" * 40
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
+    for key in cur_symtab[-1].data:
+        type1=cur_symtab[-1].data[key].type
+        if len(type1)%2==0:
+            if type1[-4]==1 and type1[-3]==0:
+                cur_symtab[-1].data[key].type[-3]=top.total
+
+    dump_st()
     cur_symtab.pop()
     cur_offset.pop()
     p[6].leaf["label"] = "Fields"
