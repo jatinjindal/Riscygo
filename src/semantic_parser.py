@@ -1397,7 +1397,8 @@ def p_Assignments(p):
                     exit()
                 p[0].leaf["code"] += (p[1].children[ind].leaf["code"] +
                                       p[4].children[ind].leaf["code"] + [[
-                                          p[2].children[0].leaf["label"],
+                                          p[2].children[0].leaf["label"][0],
+                                          p[1].children[ind].leaf["place"],
                                           p[1].children[ind].leaf["place"],
                                           p[4].children[ind].leaf["place"]
                                       ]])
@@ -1424,9 +1425,24 @@ def p_Assignments(p):
                     print("[line:" + str(p.lineno(1)) + "]" +
                           'Arithmetic operation not allowed for given type')
                     exit()
-                p[0].leaf["code"] += (p[1].children[ind].leaf["code"] +
-                                      p[4].children[ind].leaf["code"] + [[
-                                          p[2].children[0].leaf["label"],
+
+                t2 = const_generate_compilername()
+                p[0].leaf['code'] = p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
+                
+                operator = ""
+                if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                    p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
+                    p[4].chilren[ind].leaf['place'] = t2
+                    operator = p[2].children[0].leaf["label"][0] + "float"
+                elif type1[0]>=12:
+                    operator = p[2].children[0].leaf["label"][0] + "float"
+                else:
+                    operator = p[2].children[0].leaf["label"][0] + "int"
+                            
+
+                p[0].leaf["code"] += ([[
+                                          operator,
+                                          p[1].children[ind].leaf["place"],
                                           p[1].children[ind].leaf["place"],
                                           p[4].children[ind].leaf["place"]
                                       ]])
@@ -1455,12 +1471,29 @@ def p_Assignments(p):
                             "[line:" + str(p.lineno(1)) + "]" +
                             'Arithmetic operation not allowed for given type')
                         exit()
-                p[0].leaf["code"] += (
-                    p[1].children[ind].leaf["code"] +
-                    p[4].children[ind].leaf["code"] + [[
-                        "+=", p[1].children[ind].leaf["place"],
-                        p[4].children[ind].leaf["place"]
-                    ]])
+
+                t2 = const_generate_compilername()
+                p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
+                operator = ""
+                if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                    p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
+                    p[4].children[ind].leaf['place'] = t2
+                    operator = p[2].children[0].leaf["label"][0] + "float"
+                elif type1[0]>=12 and type1[0]<=14:
+                    operator = p[2].children[0].leaf["label"][0] + "float"
+                elif type1[0] == 16:
+                    operator = p[2].children[0].leaf["label"][0] + "string"
+                else:
+                    operator = p[2].children[0].leaf["label"][0] + "int"
+                            
+
+                
+                p[0].leaf["code"] += ([[
+                                          operator,
+                                          p[1].children[ind].leaf["place"],
+                                          p[1].children[ind].leaf["place"],
+                                          p[4].children[ind].leaf["place"]
+                                      ]])
                 p[0].leaf["place"] = None
 
         else:
