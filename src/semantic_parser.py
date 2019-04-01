@@ -296,8 +296,8 @@ type_map = {
     'int32': 10,
     'int64': 11,
     'uint': 12,
-    'float32': 13,
-    'float64': 14,
+    'float64': 13,
+    'float32': 14,
     'uintptr': 15,
     'string': 16,
     'error': 17,
@@ -894,7 +894,7 @@ def p_TypeDef(p):
     p[0] = Node("void", [Node("void", [], {"label": p[1]}), p[3]],
                 {"label": "TypeDef"})
     cur_symtab[-1].data[p[1]] = values(
-        type=p[3].children[0].leaf["type"], width=0, offset=cur_offset[-1])
+        type=p[3].children[0].leaf["type"], width=0, offset=0)
     cur_symtab[-1].typedef_map[p[1]] = {
         "type": p[3].children[0].leaf["type"],
         "width": p[3].children[0].leaf["width"]
@@ -1111,13 +1111,9 @@ def p_Signature(p):
         ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
-    running_offset=-16
+    running_offset=-4 #frame pointer
     for i in reversed(range(0,len(p[1].leaf["list"]))):
-        type1=first_nontypedef(p[1].leaf["type"][i],cur_symtab[-1])
-        if type1[0]==2:
-            running_offset-=8
-        else:
-            running_offset-=p[1].leaf["width"][i]
+        running_offset-=p[1].leaf["width"][i]
         cur_symtab[-1].data[p[1].leaf["list"][i]].offset=running_offset
 
 
@@ -2194,7 +2190,7 @@ def p_Expression(p):
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Expression"})
         p[0].leaf["type"] = [type_map['bool']]
-        p[0].leaf["width"] = 1
+        p[0].leaf["width"] = 4
         # IR Gen
         t1 = const_generate_compilername()
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
@@ -2230,7 +2226,7 @@ def p_Term1(p):
             [Node("void", p[1].children + p[4].children, {"label": p[2]})],
             {"label": "Expression"})
         p[0].leaf["type"] = [type_map['bool']]
-        p[0].leaf["width"] = 1
+        p[0].leaf["width"] = 4
 
         # IR Gen
         t1 = const_generate_compilername()
@@ -2262,28 +2258,42 @@ def p_Term2(p):
             Node("void", p[1].children + p[4].children,
                  {"label": p[2].children[0].leaf["label"]})
         ], {"label": "Term2"})
+        f1 = 0
+        f2 = 0
         if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                    and type2[0] <= 12):
             p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
+            p[2] = p[2].children[0].leaf["label"] + "int"
         elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                      and type2[0] <= 14):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+            if type1[0] >= 3 and type1[0] <= 12:
+                f1 = 1
+            if type2[0] >= 3 and type2[0] <= 12:
+                f2 = 1
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+            p[2] = p[2].children[0].leaf["label"] +  "float"
         else:
             print("[line:" + str(p.lineno(1)) + "]" +
                   'Arithmetic operation not allowed for given type')
             exit()
 
         p[0].leaf["type"] = [type_map['bool']]
-        p[0].leaf["width"] = 1
+        p[0].leaf["width"] = 4
 
         # IR Gen
         t1 = const_generate_compilername()
+        t2 = const_generate_compilername()
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append([
-            p[2].children[0].leaf['label'], t1, p[1].leaf['place'],
-            p[4].leaf['place']
-        ])
+        if f1 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
+            p[4].leaf['place'] = t2
+        if f2 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
+            p[1].leaf['place'] = t2
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
+
     else:
         p[4].leaf["label"] = "Expression"
         p[1].leaf["label"] = "Expression"
@@ -2297,35 +2307,51 @@ def p_Term2(p):
             Node("void", p[1].children + p[4].children,
                  {"label": p[2].children[0].leaf["label"]})
         ], {"label": "Term2"})
-
+        f1 = 0
+        f2 =0
         if check_type(type1, type2, cur_symtab[-1]) == 0:
 
             if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
                                                        and type2[0] <= 12):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
+                p[2] = p[2].children[0].leaf["label"] +  "int"
+
             elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
                                                          and type2[0] <= 14):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']
-                                                         ], 8
+                if type1[0] >= 3 and type1[0] <= 12:
+                    f1 = 1
+                if type2[0] >= 3 and type2[0] <= 12:
+                    f2 = 1
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+                p[2] = p[2].children[0].leaf["label"] +  "float"
+
             elif type1[0] == 16 and type2[0] == 16:
                 p[0].leaf["type"], p[0].leaf["width"] = [
                     16
                 ], p[1].leaf["width"] + p[4].leaf["width"]
+                p[2] = p[2].children[0].leaf["label"] +  "string"
+
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Arithmetic operation not allowed for given type')
                 exit()
 
         p[0].leaf["type"] = [type_map['bool']]
-        p[0].leaf["width"] = 1
-        # IR Gen
+        p[0].leaf["width"] = 4
+
+
         t1 = const_generate_compilername()
+        t2 = const_generate_compilername()
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append([
-            p[2].children[0].leaf['label'], t1, p[1].leaf['place'],
-            p[4].leaf['place']
-        ])
+        if f1 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
+            p[4].leaf['place'] = t2
+        if f2 == 1:
+            p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
+            p[1].leaf['place'] = t2
+        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
+
 
 
 def p_Relop(p):
@@ -2388,8 +2414,8 @@ def p_Term3(p):
                     f1 = 1
                 if type2[0] >= 3 and type2[0] <= 12:
                     f2 = 1
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
                 p[2] = '-float'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
@@ -2406,8 +2432,8 @@ def p_Term3(p):
                     f1 = 1
                 if type2[0] >= 3 and type2[0] <= 12:
                     f2 = 1
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
                 p[2] = '+float'
             elif type1[0] == 16 and type2[0] == 16:
                 p[0].leaf["type"], p[0].leaf["width"] = [16], p[1].leaf["width"] + p[4].leaf["width"]
@@ -2478,8 +2504,8 @@ def p_Term4(p):
                     f1 = 1
                 if type2[0] >= 3 and type2[0] <= 12:
                     f2 = 1
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float64']], 8
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
                 p[2] = p[2] + 'float'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
@@ -2496,7 +2522,6 @@ def p_Term4(p):
         if f2 == 1:
             p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
             p[1].leaf['place'] = t2
-        p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
 
@@ -2576,7 +2601,7 @@ def p_UnaryExp(p):
             p[0].children[0].leaf["type"] = [
                 1, p[0].children[0].leaf["width"]
             ] + type1
-            p[0].children[0].leaf["width"] = 8
+            p[0].children[0].leaf["width"] = 4
             t1 = const_generate_compilername()
             p[0].leaf['code'] = p[3].leaf['code']
             p[0].leaf['code'].append(['copy', t1, p[3].leaf['place']])
@@ -2636,15 +2661,20 @@ def p_PrimaryExpr(p):
                     type_p[1]].data[nam].offset
                 var1 = p[1].leaf['place']
                 var2 = address_generate_compilername(None, 0)
-                addr_3ac_offset[var2].append(w)
+                addr_3ac_offset[var2].append(cur_symtab[-1].struct_name_map[type_p[1]].total)
+                
+                var3 = address_generate_compilername(None, 0)
+                addr_3ac_offset[var3].append(w)
+                
                 t1 = const_generate_compilername()
                 t2 = const_generate_compilername()
                 t3 = const_generate_compilername()
+                code.append(["=", var2, var1])
                 code.append(['=', t1, offset])
-                code.append(['copy', t2, var1])
+                code.append(['copy', t2, var2])
                 code.append(['+', t3, t2, t1])
-                code.append(['copy', var2, t3])
-                place = var2
+                code.append(['copy', var3, t3])
+                place = var3
         elif p[2].leaf["label"] == "Index":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
                                       cur_symtab[-1])
@@ -2709,13 +2739,7 @@ def p_PrimaryExpr(p):
             t1 = const_generate_compilername()
             code.append(['push'])
             for i in range(len(type1)):
-                type3=first_nontypedef(p[2].leaf['type'][i],cur_symtab[-1])
-                if type3[0]==2:
-                    t=const_generate_compilername()
-                    code.append(['copy',t,p[2].leaf['place'][i]])
-                    code.append(['push', t])
-                else:    
-                    code.append(['push', p[2].leaf['place'][i]])
+                code.append(['push', p[2].leaf['place'][i]])
             code.append(['call', nam, len(type1)])
             for i in range(len(type1)):
                 code.append(['pop'])
@@ -2774,8 +2798,8 @@ def p_floatLit(p):
         Node(
             "void", [], {
                 "label": p[1],
-                "type": [type_map['float64']],
-                "width": type_width['float64']
+                "type": [type_map['float32']],
+                "width": type_width['float32']
             })
     ], {"label": "Float"})
 
@@ -2791,7 +2815,7 @@ def p_stringLit(p):
             "void", [], {
                 "label": p[1][1:-1],
                 "type": [type_map['string']],
-                "width": len(p[1]) - 2
+                "width": 36
             })
     ], {"label": "String"})
 
@@ -2911,11 +2935,11 @@ def p_StructType(p):
     # print "-" * 40
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
-    for key in cur_symtab[-1].data:
-        type1=cur_symtab[-1].data[key].type
-        if len(type1)%2==0:
-            if type1[-4]==1 and type1[-3]==0:
-                cur_symtab[-1].data[key].type[-3]=top.total
+    # for key in cur_symtab[-1].data:
+    #     type1=cur_symtab[-1].data[key].type
+    #     if len(type1)%2==0:
+    #         if type1[-4]==1 and type1[-3]==0:
+    #             cur_symtab[-1].data[key].type[-3]=top.total
 
     dump_st()
     cur_symtab.pop()
@@ -2925,7 +2949,7 @@ def p_StructType(p):
         Node("void", p[6].children, {
             "label": "struct",
             "type": [3, p[2]],
-            "width": top.total
+            "width": 4
         })
     ], {"label": "StructType"})
 
