@@ -1346,179 +1346,121 @@ def p_Assignments(p):
     len1 = len(p[1].children)
     len2 = len(p[4].children)
     if len1 != len2:
-        print "Mismatch in number of arguments at lineno " + str(p.lineno(1))
+        print 'Mismatch in number of arguments at lineno ' + str(p.lineno(1))
         exit()
     for ind in range(0, len1):
-        if "marked" not in p[1].children[ind].children[0].leaf:
-            print "Assignment allowed only to Identifiers.Error at lineno " + str(
-                p.lineno(1))
+        if 'marked' not in p[1].children[ind].children[0].leaf:
+            print 'Assignment allowed only to identifiers. Error at lineno ' + str(p.lineno(1))
             exit()
 
-    if p[2] == "=":
-        p[0] = Node("void",
-                    [p[1], Node("void", [], {"label": p[2]}), p[4]],
-                    {"label": "Assignment"})
-        p[0].leaf["code"] = []
-        p[0].leaf["place"] = None
+    if p[2] == '=':
+        p[0] = Node('void', [p[1], Node('void', [], {'label': p[2]}), p[4]], {'label': 'Assignment'})
+        p[0].leaf['code'] = []
+        p[0].leaf['place'] = None
         for ind in range(0, len1):
-            type1 = first_nontypedef(p[1].children[ind].leaf["type"],
-                                     cur_symtab[-1])
-            type2 = first_nontypedef(p[4].children[ind].leaf["type"],
-                                     cur_symtab[-1])
+            type1 = first_nontypedef(p[1].children[ind].leaf['type'], cur_symtab[-1])
+            type2 = first_nontypedef(p[4].children[ind].leaf['type'], cur_symtab[-1])
             if check_type(type1, type2, cur_symtab[-1]) == False:
                 if len(type1) != 1 or len(type2) != 1:
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                elif (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 13 and
-                                                             type2[0] <= 14):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Not possible to assign float to int')
+                elif type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 13 and type2[0] <= 14:
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                elif not ((type1[0] >= 3 and type1[0] <= 14) and
-                          (type2[0] >= 3 and type2[0] <= 14)):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                elif not (type1[0] >= 3 and type1[0] <= 14 and type2[0] >= 3 and type2[0] <= 14):
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-
             t2 = const_generate_compilername()
-            if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+            if type1[0] > 12 and type1[0] <= 14 and type2[0] <= 12:
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].chilren[ind].leaf['place'] = t2
-
-            p[0].leaf["code"] += (p[1].children[ind].leaf["code"] +
-                                  p[4].children[ind].leaf["code"] + [[
-                                      "=", p[1].children[ind].leaf["place"],
-                                      p[4].children[ind].leaf["place"]
-                                  ]])
+            p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code'] + [[
+                    '=',
+                    p[1].children[ind].leaf['place'],
+                    p[4].children[ind].leaf['place']]]
     else:
-
-        p[0] = Node("void", [p[1], p[2].children[0], p[4]],
-                    {"label": "AssignOp"})
-        p[0].leaf["code"] = []
-        p[0].leaf["place"] = None
-
-        if p[2].children[0].leaf["label"] in [
-                "&=", "^=", "|=", ">>=", "<<=", "%="
-        ]:
+        p[0] = Node('void', [p[1], p[2].children[0], p[4]], {'label': 'AssignOp'})
+        p[0].leaf['code'] = []
+        p[0].leaf['place'] = None
+        if p[2].children[0].leaf['label'] in ['&=', '^=', '|=', '>>=', '<<=', '%=']:
             for ind in range(0, len1):
-                type1 = first_nontypedef(p[1].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-                type2 = first_nontypedef(p[4].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-
+                type1 = first_nontypedef(p[1].children[ind].leaf['type'], cur_symtab[-1])
+                type2 = first_nontypedef(p[4].children[ind].leaf['type'], cur_symtab[-1])
                 if len(type1) != 1 or len(type2) != 1:
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                if not ((type1[0] >= 3 and type1[0] <= 12) and
-                        (type2[0] >= 3 and type2[0] <= 12)):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                if not (type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 3 and type2[0] <= 12):
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                p[0].leaf["code"] += (p[1].children[ind].leaf["code"] +
-                                      p[4].children[ind].leaf["code"] + [[
-                                          p[2].children[0].leaf["label"][0],
-                                          p[1].children[ind].leaf["place"],
-                                          p[1].children[ind].leaf["place"],
-                                          p[4].children[ind].leaf["place"]
-                                      ]])
-                p[0].leaf["place"] = None
-        elif p[2].children[0].leaf["label"] in ["/=", "*=", "-="]:
-
+                p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code'] + [[
+                        p[2].children[0].leaf['label'][0],
+                        p[1].children[ind].leaf['place'],
+                        p[1].children[ind].leaf['place'],
+                        p[4].children[ind].leaf['place']]]
+                p[0].leaf['place'] = None
+        elif p[2].children[0].leaf['label'] in ['/=', '*=', '-=']:
             for ind in range(0, len1):
-                type1 = first_nontypedef(p[1].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-                type2 = first_nontypedef(p[4].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-
+                type1 = first_nontypedef(p[1].children[ind].leaf['type'], cur_symtab[-1])
+                type2 = first_nontypedef(p[4].children[ind].leaf['type'], cur_symtab[-1])
                 if len(type1) != 1 or len(type2) != 1:
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                elif (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 13 and
-                                                             type2[0] <= 14):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Not possible to assign float to int')
+                elif type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 13 and type2[0] <= 14):
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                elif not ((type1[0] >= 3 and type1[0] <= 14) and
-                          (type2[0] >= 3 and type2[0] <= 14)):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                elif not (type1[0] >= 3 and type1[0] <= 14 and type2[0] >= 3 and type2[0] <= 14):
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-
                 t2 = const_generate_compilername()
                 p[0].leaf['code'] = p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
-
-                operator = ""
-                if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                operator = ''
+                if type1[0] > 12 and type1[0] <= 14 and type2[0] <= 12:
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].chilren[ind].leaf['place'] = t2
-                    operator = p[2].children[0].leaf["label"][0] + "float"
+                    operator = p[2].children[0].leaf['label'][0] + 'float'
                 elif type1[0]>=12:
-                    operator = p[2].children[0].leaf["label"][0] + "float"
+                    operator = p[2].children[0].leaf['label'][0] + 'float'
                 else:
-                    operator = p[2].children[0].leaf["label"][0] + "int"
-
-
-                p[0].leaf["code"] += ([[
-                                          operator,
-                                          p[1].children[ind].leaf["place"],
-                                          p[1].children[ind].leaf["place"],
-                                          p[4].children[ind].leaf["place"]
-                                      ]])
-                p[0].leaf["place"] = None
-
-        elif p[2].children[0].leaf["label"] == "+=":
+                    operator = p[2].children[0].leaf['label'][0] + 'int'
+                p[0].leaf['code'] += [[ operator,
+                        p[1].children[ind].leaf['place'],
+                        p[1].children[ind].leaf['place'],
+                        p[4].children[ind].leaf['place']]]
+                p[0].leaf['place'] = None
+        elif p[2].children[0].leaf['label'] == '+=':
             for ind in range(0, len1):
-                type1 = first_nontypedef(p[1].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-                type2 = first_nontypedef(p[4].children[ind].leaf["type"],
-                                         cur_symtab[-1])
-
+                type1 = first_nontypedef(p[1].children[ind].leaf['type'], cur_symtab[-1])
+                type2 = first_nontypedef(p[4].children[ind].leaf['type'], cur_symtab[-1])
                 if len(type1) != 1 or len(type2) != 1:
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Arithmetic operation not allowed for given type')
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
-                elif (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 13 and
-                                                             type2[0] <= 14):
-                    print("[line:" + str(p.lineno(1)) + "]" +
-                          'Not possible to assign float to int')
+                elif type1[0] >= 3 and type1[0] <= 12 and type2[0] >= 13 and type2[0] <= 14:
+                    print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                     exit()
                 elif not (type1[0] == 16 and type2[0] == 16):
-                    if not ((type1[0] >= 3 and type1[0] <= 14) and
-                            (type2[0] >= 3 and type2[0] <= 14)):
-                        print(
-                            "[line:" + str(p.lineno(1)) + "]" +
-                            'Arithmetic operation not allowed for given type')
+                    if not (type1[0] >= 3 and type1[0] <= 14 and type2[0] >= 3 and type2[0] <= 14):
+                        print('[line:' + str(p.lineno(1)) + ']' + 'Arithmetic operation not allowed for given type')
                         exit()
-
                 t2 = const_generate_compilername()
                 p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
-                operator = ""
-                if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                operator = ''
+                if type1[0] > 12 and type1[0] <= 14 and type2[0] <= 12:
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
-                    operator = p[2].children[0].leaf["label"][0] + "float"
-                elif type1[0]>=12 and type1[0]<=14:
-                    operator = p[2].children[0].leaf["label"][0] + "float"
+                    operator = p[2].children[0].leaf['label'][0] + 'float'
+                elif type1[0] >= 12 and type1[0] <= 14:
+                    operator = p[2].children[0].leaf['label'][0] + 'float'
                 elif type1[0] == 16:
-                    operator = p[2].children[0].leaf["label"][0] + "string"
+                    operator = p[2].children[0].leaf['label'][0] + 'string'
                 else:
-                    operator = p[2].children[0].leaf["label"][0] + "int"
-
-
-
-                p[0].leaf["code"] += ([[
-                                          operator,
-                                          p[1].children[ind].leaf["place"],
-                                          p[1].children[ind].leaf["place"],
-                                          p[4].children[ind].leaf["place"]
-                                      ]])
-                p[0].leaf["place"] = None
-
+                    operator = p[2].children[0].leaf['label'][0] + 'int'
+                p[0].leaf['code'] += [[ operator
+                        p[1].children[ind].leaf['place'],
+                        p[1].children[ind].leaf['place'],
+                        p[4].children[ind].leaf['place']]]
+                p[0].leaf['place'] = None
         else:
-            print "ERROR NOT POSSIBLE IN ASSIGNMENT CASE"
+            print 'ERROR NOT POSSIBLE IN ASSIGNMENT CASE'
             exit()
 
 
