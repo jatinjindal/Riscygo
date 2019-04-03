@@ -1,11 +1,9 @@
 package main
 
-import "fmt"
-
-func pluscommon(a int,b int,c int) int {
-	return a+b+c
+func pluscommon(a int, b int, c int) int {
+	return a + b + c
 }
 
 func main() {
- pluscommon(1, 2, 3)
+	pluscommon(1, 2, 3)
 }
