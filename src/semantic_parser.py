@@ -829,7 +829,7 @@ def p_ConstSpec(p):
         for ind in range(0, len1):
             t = lookup(cur_symtab[len(cur_symtab) - 1],
                        p[1].children[ind].leaf["label"])
-            if t is None:              
+            if t is None:
 
                 width = p[4].children[ind].leaf["width"]
                 type1 = first_nontypedef(p[2].children[0].leaf["type"],
@@ -860,7 +860,7 @@ def p_ConstSpec(p):
                         p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                         p[4].chilren[ind].leaf['place'] = t2
 
-                
+
 
                 tmp_name = address_generate_compilername( cur_offset[-1],p[2].children[0].leaf["type"],width)
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
@@ -1041,7 +1041,7 @@ def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
     '''
-    
+
     # print "-" * 40
     # print "function symtab"
     # print "symtab data:"
@@ -1449,7 +1449,7 @@ def p_Assignments(p):
 
                 t2 = const_generate_compilername()
                 p[0].leaf['code'] = p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
-                
+
                 operator = ""
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
@@ -1459,7 +1459,7 @@ def p_Assignments(p):
                     operator = p[2].children[0].leaf["label"][0] + "float"
                 else:
                     operator = p[2].children[0].leaf["label"][0] + "int"
-                            
+
 
                 p[0].leaf["code"] += ([[
                                           operator,
@@ -1506,9 +1506,9 @@ def p_Assignments(p):
                     operator = p[2].children[0].leaf["label"][0] + "string"
                 else:
                     operator = p[2].children[0].leaf["label"][0] + "int"
-                            
 
-                
+
+
                 p[0].leaf["code"] += ([[
                                           operator,
                                           p[1].children[ind].leaf["place"],
@@ -1740,7 +1740,7 @@ def p_IfStmt(p):
             Node("void", [], {"label": "else"}), p[7]
         ], {"label": "IfStmt"})
 
-        
+
         # print "-" * 40
         # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
         # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
@@ -2016,7 +2016,7 @@ def p_ForStmt(p):
             p[0].leaf["code"] = code
             p[0].leaf["label"] = None
 
-    
+
     # print "-" * 40
     # print "End of symtabl ", cur_symtab[len(cur_symtab) - 1].label
     # print "symtab data:", cur_symtab[len(cur_symtab) - 1].data
@@ -2716,10 +2716,10 @@ def p_PrimaryExpr(p):
                 var1 = p[1].leaf['place']
                 var2 = address_generate_compilername(None, 0)
                 addr_3ac_offset[var2].append(cur_symtab[-1].struct_name_map[type_p[1]].total)
-                
+
                 var3 = address_generate_compilername(None, 0)
                 addr_3ac_offset[var3].append(w)
-                
+
                 t1 = const_generate_compilername()
                 t2 = const_generate_compilername()
                 t3 = const_generate_compilername()
@@ -2979,7 +2979,7 @@ def p_StructType(p):
     '''
     StructType : STRUCT M RepeatNewline LBRACE RepeatNewline RepeatFieldDecl RBRACE
     '''
-    
+
     # print "-" * 40
     # print "struct symtab"
     # print "symtab data:\n"
