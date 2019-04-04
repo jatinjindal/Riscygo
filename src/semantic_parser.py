@@ -18,7 +18,7 @@ cur_symtab, cur_offset,cur_activation = [], [],[]
 func_offset = []
 
 #used for 3ac
-set_of_activation=[]
+set_of_activation={}
 global_struct_length={}
 #used for 3ac
 
@@ -170,19 +170,19 @@ def check_type(type1, type2, table):
         return check_type(type1, table.typedef_map[type2[1]]["type"], table)
 
 
-def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None):
+def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None,isreg=0):
     global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
-    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1}
+    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg}
     return name
 
 
-def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None):
+def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=0):
     global const_compiler_count
     const_compiler_count += 1
     name = "t_" + str(const_compiler_count)
-    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1}
+    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg}
     return name
 
 
@@ -593,7 +593,8 @@ def p_Start(p):
     # print "typedef_map", cur_symtab[len(cur_symtab) - 1].typedef_map
     # print "struct_name_map", cur_symtab[len(cur_symtab) - 1].struct_name_map
     # print '-' * 40
-    p[0].leaf["code"].insert(0,["goto","main"])
+    with open('code.pickle', 'wb') as handle:
+        pickle.dump(p[0].leaf["code"],handle)
     for code in p[0].leaf["code"]:
         out_ir.write(','.join(map(lambda x: str(x).strip(), code)) + '\n')
     out_st.write('-' * 60 + '\n')
@@ -609,7 +610,7 @@ def p_SourceFile(p):
     p[0] = Node("void", [p[2], p[3], p[5]], {"label": "Start"})
     p[0].leaf["code"] = p[5].leaf["code"]
     p[0].leaf["place"] = None
-    set_of_activation.append(cur_activation[-1])
+    set_of_activation["global"]=cur_activation[-1]
     
     cur_activation.pop()
 
@@ -1068,10 +1069,11 @@ def p_FunctionDecl(p):
     top = cur_symtab[-1]
     top.total = cur_offset[-1]
     dump_st()
+    set_of_activation[cur_symtab[-1].label_map[0]]=cur_activation[-1]
     cur_symtab.pop()
     cur_offset.pop()
     func_offset.pop()
-    set_of_activation.append(cur_activation[-1])
+    
    
     cur_activation.pop()
     #t = lookup(cur_symtab[-1], p[1].children[1].leaf["label"])
@@ -1079,7 +1081,7 @@ def p_FunctionDecl(p):
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
     p[0] = p[1]
-    p[0].leaf["code"] = [[p[1].children[1].leaf["label"] + ":"]]
+    p[0].leaf["code"] = [[p[1].children[1].leaf["label"] , ":"]]
     p[0].leaf["code"] += p[2].leaf["code"]
     p[0].leaf["place"] = None
 
@@ -1755,7 +1757,7 @@ def p_IfStmt(p):
         ]]
         p[0].leaf["place"] = None
         if p[-1] == "else":
-            p[0].leaf["code"] += [[p[2].leaf["next"] + ":"]]
+            p[0].leaf["code"] += [[p[2].leaf["next"] , ":"]]
 
     elif len(p) == 8:
         p[0] = Node("void", [
@@ -1935,12 +1937,12 @@ def p_ExprCaseClause(p):
     func_offset[-1]+=4
     if "default" in p[1].leaf["label"]:
         code1 = [["goto ", p[1].leaf["label"]]]
-        code2 = [[p[1].leaf["label"] + ":"]] + p[4].leaf["code"]
+        code2 = [[p[1].leaf["label"] , ":"]] + p[4].leaf["code"]
     else:
         code1 = p[1].leaf["code"] + [[
             "==", t1, p[-1].leaf["place"], p[1].leaf["place"]
         ], ["iftrue ", t1, "goto ", p[1].leaf["label"]]]
-        code2 = [[p[1].leaf["label"] + ":"]] + p[4].leaf["code"]
+        code2 = [[p[1].leaf["label"] , ":"]] + p[4].leaf["code"]
     p[0].leaf["code1"] = code1
     p[0].leaf["code2"] = code2
 
@@ -2017,13 +2019,13 @@ def p_ForStmt(p):
         p[0] = Node("void", [Node("void", [], {"label": "for"}), p[3], p[4]],
                     {"label": "ForStmt"})
         if p[4].leaf["label"] == "Condition":
-            code = [[p[2].leaf["label"] + ":"]] + p[4].leaf["code"]
+            code = [[p[2].leaf["label"] , ":"]] + p[4].leaf["code"]
             code += [[
                 "iffalse ", p[4].leaf["place"], " goto ",
                 p[2].leaf["label"] + ".next"
             ]]
             code += p[5].leaf["code"] + [["goto ", p[2].leaf["label"]]]
-            code += [[p[2].leaf["label"] + ".next :"]]
+            code += [[p[2].leaf["label"] + ".next",":"]]
             p[0].leaf["code"] = code
         else:
             code = p[4].leaf["code"][0] + [[p[2].leaf["label"] + ": "]
@@ -2034,8 +2036,7 @@ def p_ForStmt(p):
                     p[2].leaf["label"] + ".next"
                 ]]
             code += p[5].leaf["code"] + [[
-                p[2].leaf["label"] + ".post:"
-            ]] + p[4].leaf["code"][2] + [["goto ", p[2].leaf["label"]]
+                p[2].leaf["label"] + ".post",":"]] + p[4].leaf["code"][2] + [["goto ", p[2].leaf["label"]]
                                          ] + [[p[2].leaf["label"] + ".next: "]]
             p[0].leaf["code"] = code
             p[0].leaf["label"] = None
