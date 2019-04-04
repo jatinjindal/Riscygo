@@ -170,7 +170,7 @@ def check_type(type1, type2, table):
         return check_type(type1, table.typedef_map[type2[1]]["type"], table)
 
 
-def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None,isreg=0):
+def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None,isreg=-1):
     global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
@@ -178,7 +178,7 @@ def address_generate_compilername(offset=None,type1=None,width=None,label=None,o
     return name
 
 
-def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=0):
+def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=-1):
     global const_compiler_count
     const_compiler_count += 1
     name = "t_" + str(const_compiler_count)
@@ -863,10 +863,11 @@ def p_ConstSpec(p):
                         exit()
                     width = 4
 
-                t2 = const_generate_compilername(func_offset[-1])
-                func_offset[-1]+=4
+                
                 p[0].leaf["code"]+=p[4].children[ind].leaf["code"]
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                        t2 = const_generate_compilername(func_offset[-1])
+                        func_offset[-1]+=4
                         p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                         p[4].children[ind].leaf['place'] = t2
 
@@ -1024,10 +1025,11 @@ def p_VarSpec(p):
                         exit()
                     width = 4 
 
-                t2 = const_generate_compilername(func_offset[-1])
-                func_offset[-1]+=4
+                
                 p[0].leaf["code"]+=p[5].children[ind].leaf["code"]
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                        t2 = const_generate_compilername(func_offset[-1])
+                        func_offset[-1]+=4
                         p[0].leaf['code'].append(['cast-float', t2, p[5].children[ind].leaf['place']])
                         p[5].children[ind].leaf['place'] = t2
 
@@ -1403,10 +1405,11 @@ def p_Assignments(p):
                           'Arithmetic operation not allowed for given type')
                     exit()
 
-            t2 = const_generate_compilername(func_offset[-1])
-            func_offset[-1]+=4
+            
             p[0].leaf["code"]+=(p[1].children[ind].leaf["code"] + p[4].children[ind].leaf["code"] )
             if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                    t2 = const_generate_compilername(func_offset[-1])
+                    func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
 
@@ -1470,12 +1473,13 @@ def p_Assignments(p):
                           'Arithmetic operation not allowed for given type')
                     exit()
 
-                t2 = const_generate_compilername(func_offset[-1])
-                func_offset[-1]+=4
+                
                 p[0].leaf['code'] = p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
                 
                 operator = ""
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                    t2 = const_generate_compilername(func_offset[-1])
+                    func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
                     operator = p[2].children[0].leaf["label"][0] + "float"
@@ -1517,11 +1521,12 @@ def p_Assignments(p):
                             'Arithmetic operation not allowed for given type')
                         exit()
 
-                t2 = const_generate_compilername(func_offset[-1])
-                func_offset[-1]+=4
+                
                 p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
                 operator = ""
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
+                    t2 = const_generate_compilername(func_offset[-1])
+                    func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
                     operator = p[2].children[0].leaf["label"][0] + "float"
@@ -1933,12 +1938,13 @@ def p_ExprCaseClause(p):
         "label": p[-1].leaf["label"],
         "place": p[-1].leaf["place"]
     })
-    t1 = const_generate_compilername(func_offset[-1])
-    func_offset[-1]+=4
+    
     if "default" in p[1].leaf["label"]:
         code1 = [["goto ", p[1].leaf["label"]]]
         code2 = [[p[1].leaf["label"] , ":"]] + p[4].leaf["code"]
     else:
+        t1 = const_generate_compilername(func_offset[-1])
+        func_offset[-1]+=4
         code1 = p[1].leaf["code"] + [[
             "==", t1, p[-1].leaf["place"], p[1].leaf["place"]
         ], ["iftrue ", t1, "goto ", p[1].leaf["label"]]]
