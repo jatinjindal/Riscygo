@@ -61,13 +61,13 @@ class structtab:
 
 
 class values:
-    def __init__(self, type=None, width=0, offset=None, args=None, place=None):
+    def __init__(self, type=None, width=0, offset=None, args=None, place=None, args_width=None):
         self.type = type
         self.offset = offset
         self.width = width
         self.args = args
         self.place = place
-
+        self.args_width = args_width
 
 def lookup_top(table, id):
     if table is None:
@@ -608,7 +608,7 @@ def p_SourceFile(p):
     SourceFile : RepeatNewline PackageClause ImportClause A RepeatTopLevelDecl
     '''
     p[0] = Node("void", [p[2], p[3], p[5]], {"label": "Start"})
-    p[0].leaf["code"] = p[5].leaf["code"]
+    p[0].leaf["code"] = p[5].leaf["code1"] + p[5].leaf["code2"]
     p[0].leaf["place"] = None
     set_of_activation["global"]=cur_activation[-1]
     
@@ -705,17 +705,29 @@ def p_RepeatTopLevelDecl(p):
     if len(p) == 2:
         if p[1]:
             p[0] = Node("void", [p[1]], {"label": "Declarations"})
-            p[0].leaf["code"] = p[1].leaf["code"]
+            p[0].leaf["label"] = p[1].leaf["label"]
+            if p[0].leaf["label"] == "Declaration":
+                p[0].leaf["code1"] = p[1].leaf["code"]
+                p[0].leaf["code2"] = []
+            else:
+                p[0].leaf["code2"] = p[1].leaf["code"]
+                p[0].leaf["code1"] = []
+                
             p[0].leaf["place"] = p[1].leaf["place"]
         else:
             p[0] = Node("void", [], {
-                "label": "Declarations",
-                "code": [],
+                "label": "empty",
+                "code1": [],
+                "code2": [],
                 "place": None
             })
     if len(p) == 4:
         p[3].children = [p[1]] + p[3].children
-        p[3].leaf["code"] = p[1].leaf["code"] + p[3].leaf["code"]
+        if p[1].leaf["label"] == "Declaration":
+            p[3].leaf["code1"] = p[1].leaf["code"] + p[3].leaf["code1"]
+        else:
+            p[3].leaf["code2"] = p[1].leaf["code"] + p[3].leaf["code2"]
+
         p[3].leaf["place"] = None
         p[0] = p[3]
 
@@ -1083,8 +1095,10 @@ def p_FunctionDecl(p):
     p[1].children = p[1].children + [p[2]]
     p[1].leaf["label"] = "Function"
     p[0] = p[1]
+    p[0].leaf["label"] = "FunctionDecl"
     p[0].leaf["code"] = [[p[1].children[1].leaf["label"] , ":"]]
     p[0].leaf["code"] += p[2].leaf["code"]
+    p[0].leaf["code"] += [["return"]]
     p[0].leaf["place"] = None
 
 
@@ -1102,7 +1116,9 @@ def p_FunctionMarker(p):
             type=p[0].children[3].leaf["type"],
             offset=cur_offset[-2],
             width=p[0].children[3].leaf["width"],
-            args=p[0].children[2].leaf["type"])
+            args=p[0].children[2].leaf["type"],
+            args_width = p[0].children[2].leaf["width"])
+
         cur_offset[-2] += p[0].children[3].leaf["width"]
         cur_symtab[-1].label_map.insert(0, p[3].leaf["label"])
     else:
@@ -1171,7 +1187,7 @@ def p_Parameters(p):
         ], {
             "label": "Arguments",
             "type": [],
-            "width": 0,
+            "width": [0],
             "list":[]
         })
     else:
@@ -2864,8 +2880,11 @@ def p_PrimaryExpr(p):
             for i in range(len(type1)):
                 code.append(['push', p[2].leaf['place'][i]])
             code.append(['call', nam, len(type1)])
-            for i in range(len(type1)):
-                code.append(['pop'])
+            
+            pop_width_list = cur_symtab[0].data[nam].args_width
+            for pop_width in pop_width_list:
+                for count in xrange(pop_width/4):
+                    code.append(['pop'])
             code.append(['pop', t1])
             place = t1
         p[0].leaf['place'] = place

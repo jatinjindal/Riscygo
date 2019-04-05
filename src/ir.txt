@@ -1,0 +1,16 @@
+=,t_1,5
+=,var_1,t_1
+=,t_3,10
+=,var_4,t_3
+f,:
+=,t_2,0
+=,var_2,t_2
+return,var_2
+return
+main,:
+push
+call,f,0
+pop,t_4
+=,t_5,0
+return,t_5
+return
