@@ -25,6 +25,7 @@ global_struct_length={}
 case_count = 0
 addr_compiler_count = 0
 const_compiler_count = 0
+r_compiler_count=0
 
 class activation_record:
     def __init__(self,previous=None):
@@ -86,6 +87,12 @@ def lookup(table, id):
             return val
     return None
 
+def is_float(type1,table):
+    type2=first_nontypedef(type1,table)
+    if len(type2)==1 and type2[0]>=13 and type2[0]<=14:
+        return 1
+    else:
+        return 0
 
 # def find_basic_type(type1, table):
 #     if len(type1) == 1:
@@ -170,19 +177,26 @@ def check_type(type1, type2, table):
         return check_type(type1, table.typedef_map[type2[1]]["type"], table)
 
 
-def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None,isreg=-1):
+def address_generate_compilername(offset=None,type1=None,width=None,label=None,offset1=None,isreg=-1,isf=0):
     global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
-    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg}
+    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg,"isf":isf}
     return name
 
 
-def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=-1):
+def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=-1,isf=0):
     global const_compiler_count
     const_compiler_count += 1
     name = "t_" + str(const_compiler_count)
-    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg}
+    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg,"isf":isf}
+    return name
+
+def str_generate_compilername(addr=None,isreg=-1)
+    global r_compiler_count
+    r_compiler_count+=1
+    name="r_"+str(r_compiler_count)
+    cur_activation[-1].data[name]={"addr":addr}
     return name
 
 
@@ -819,7 +833,8 @@ def p_ConstSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
                 #3AC-code
-                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf['width'],cur_activation[-1].label,func_offset[-1])
+                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf['width'],cur_activation[-1].label,func_offset[-1],isf=isfloat)
 
                 cur_symtab[-1].data[child.leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
@@ -884,8 +899,8 @@ def p_ConstSpec(p):
                         p[4].children[ind].leaf['place'] = t2
 
                 
-
-                tmp_name = address_generate_compilername( cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),width,cur_activation[-1].label,func_offset[-1])
+                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername( cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),width,cur_activation[-1].label,func_offset[-1],isf=isfloat)
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
@@ -978,7 +993,8 @@ def p_VarSpec(p):
             t = lookup(cur_symtab[len(cur_symtab) - 1], child.leaf["label"])
             if t is None:
                 #3AC-code
-                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf["width"],cur_activation[-1].label,func_offset[-1])
+                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf["width"],cur_activation[-1].label,func_offset[-1],isf=isfloat)
 
                 cur_symtab[len(cur_symtab) -
                            1].data[child.leaf["label"]] = values(
@@ -986,7 +1002,12 @@ def p_VarSpec(p):
                                width=p[2].children[0].leaf["width"],
                                offset=cur_offset[len(cur_offset) - 1],
                                place=tmp_name)
-                p[0].leaf["code"] = []
+                basic_typ=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
+                if basic_typ[0]==3:
+                    wi=cur_symtab[-1].struct_name_map[basic_typ[1]].total
+                    p[0].leaf["code"]=[["malloc",wi,tmp_name]]
+                else:
+                    p[0].leaf["code"]=[]
                 p[0].leaf["place"] = None
                 cur_offset[-1] += p[2].children[0].leaf["width"]
                 func_offset[-1] += p[2].children[0].leaf["width"]
@@ -1045,8 +1066,8 @@ def p_VarSpec(p):
                         p[0].leaf['code'].append(['cast-float', t2, p[5].children[ind].leaf['place']])
                         p[5].children[ind].leaf['place'] = t2
 
-
-                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),width,cur_activation[-1].label,func_offset[-1])
+                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),width,cur_activation[-1].label,func_offset[-1],isf=isfloat)
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
@@ -1239,7 +1260,8 @@ def p_ParameterDecl(p):
             })
         t = lookup(cur_symtab[len(cur_symtab) - 1], p[1])
         if t is None:
-            t_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf["width"],cur_activation[-1].label,cur_offset[-1])
+            isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+            t_name = address_generate_compilername(cur_offset[-1],first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1]),p[2].children[0].leaf["width"],cur_activation[-1].label,cur_offset[-1],isf=isfloat)
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
                 type=p[2].children[0].leaf["type"],
                 width=p[2].children[0].leaf["width"],
@@ -1579,7 +1601,8 @@ def p_ShortVarDecl(p):
 
     t = lookup(cur_symtab[-1], p[1])
     if t is None:
-        tmp_new = address_generate_compilername(cur_offset[-1],first_nontypedef(p[4].children[0].leaf["type"],cur_symtab[-1]),p[4].children[0].leaf["width"],cur_activation[-1].label,func_offset[-1])
+        isfloat=is_float(p[4].children[0].leaf["type"],cur_symtab[-1])
+        tmp_new = address_generate_compilername(cur_offset[-1],first_nontypedef(p[4].children[0].leaf["type"],cur_symtab[-1]),p[4].children[0].leaf["width"],cur_activation[-1].label,func_offset[-1],isf=isfloat)
         cur_symtab[-1].data[p[1]] = values(
             type=p[4].children[0].leaf["type"],
             offset=cur_offset[-1],
@@ -2703,12 +2726,13 @@ def p_UnaryExp(p):
             
 
             #offset generation
+            isfloat=is_float(p[0].children[0].leaf["type"],cur_symtab[-1])
             if p[3].leaf["place"] in cur_activation[-1].data:
-                off_old=cur_activation[-1].data[p[3].leaf["place"]]["offset"]
-                v1 = address_generate_compilername(off_old,first_nontypedef(p[0].children[0].leaf["type"],cur_symtab[-1]),p[0].children[0].leaf["width"],cur_activation[-1].label)
+                v1 = address_generate_compilername(0,first_nontypedef(p[0].children[0].leaf["type"],cur_symtab[-1]),p[0].children[0].leaf["width"],cur_activation[-1].label,func_offset[-1],isf=isfloat)
+                func_offset[-1]+=4
             else:
-                off_old=cur_activation[0].data[p[3].leaf["place"]]["offset"]
-                v1 = address_generate_compilername(off_old,first_nontypedef(p[0].children[0].leaf["type"],cur_symtab[-1]),p[0].children[0].leaf["width"],cur_activation[0].label)
+                v1 = address_generate_compilername(0,first_nontypedef(p[0].children[0].leaf["type"],cur_symtab[-1]),p[0].children[0].leaf["width"],cur_activation[0].label, func_offset[-1],isf=isfloat)
+                func_offset[-1]+=4
 
             #offset generation
 
@@ -2786,7 +2810,7 @@ def p_PrimaryExpr(p):
                 var1 = p[1].leaf['place']
                 var2 = address_generate_compilername("heap",first_nontypedef(p[1].children[0].leaf["type"],cur_symtab[-1]),cur_symtab[-1].struct_name_map[type_p[1]].total,"heap","heap")
                 
-                var3 = address_generate_compilername("heap",first_nontypedef(t,cur_symtab[-1]),w,"heap","heap")
+                var3 = ("heap",first_nontypedef(t,cur_symtab[-1]),w,"heap","heap")
                 
                 t1 = const_generate_compilername(func_offset[-1])
                 func_offset[-1]+=4
@@ -2794,12 +2818,11 @@ def p_PrimaryExpr(p):
                 func_offset[-1]+=4
                 t3 = const_generate_compilername(func_offset[-1])
                 func_offset[-1]+=4
-                code.append(["=", var2, var1])
-                code.append(['=', t1, offset])
-                code.append(['copy', t2, var2])
+                code.append(["=", t1, var1])
+                code.append(['=', t2, offset])
                 code.append(['+', t3, t2, t1])
-                code.append(['copy', var3, t3])
-                place = var3
+                code.append(['copy', r1, t3])
+                place = r1
         elif p[2].leaf["label"] == "Index":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
                                       cur_symtab[-1])
