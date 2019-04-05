@@ -3040,7 +3040,7 @@ def p_PointerType(p):
                 "label": p[1] + p[2].children[0].leaf["label"],
                 "type":
                 [1, p[2].leaf["width"]] + p[2].children[0].leaf["type"],
-                "width": 8
+                "width": 4
             })
     ], {"Label": "PointerType"})
 
