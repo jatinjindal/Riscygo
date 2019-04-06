@@ -178,27 +178,13 @@ def check_type(type1, type2, table):
         return check_type(type1, table.typedef_map[type2[1]]["type"], table)
 
 
-def address_generate_compilername(offset1=None,width=None,label=None,isreg=-1):
+def address_generate_compilername(offset1=None,width=None,label=None,isf=0,isreg=-1):
     global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
-    cur_activation[-1].data[name]={"width":width,"label":label,"func_offset":offset1,"isreg":isreg}
+    cur_activation[-1].data[name]={"width":width,"label":label,"func_offset":offset1,"isf":0,"isreg":isreg}
     return name
 
-
-def const_generate_compilername(offset1=None,offset=None,type1=None,width=4,label=None,isreg=-1,isf=0):
-    global const_compiler_count
-    const_compiler_count += 1
-    name = "t_" + str(const_compiler_count)
-    cur_activation[-1].data[name]={"offset":offset,"type":type1,"width":width,"label":label,"func_offset":offset1,"isreg":isreg,"isf":isf}
-    return name
-
-def str_generate_compilername(addr=None,isreg=-1):
-    global r_compiler_count
-    r_compiler_count+=1
-    name="r_"+str(r_compiler_count)
-    cur_activation[-1].data[name]={"addr":addr}
-    return name
 
 
 def generate_name():
@@ -837,10 +823,11 @@ def p_ConstSpec(p):
                 type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
                 
                 if type1[0]==2 or type1[0]==3:
-                    tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label)
+                    tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label,0)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                 else:
-                    tmp_name = address_generate_compilername(func_offset[-1],p[2].children[0].leaf['width'],cur_activation[-1].label)
+                    isf=is_float(p[2].children[0].leaf["type"])
+                    tmp_name = address_generate_compilername(func_offset[-1],p[2].children[0].leaf['width'],cur_activation[-1].label,isf)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                     p[0].leaf["code"]=[]
 
@@ -907,14 +894,14 @@ def p_ConstSpec(p):
                 
                 p[0].leaf["code"]+=p[4].children[ind].leaf["code"]
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
-                        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
                         func_offset[-1]+=4
                         p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                         p[4].children[ind].leaf['place'] = t2
 
                 
-                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
-                tmp_name = address_generate_compilername(func_offset[-1] ,width,cur_activation[-1].label)
+                isf=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername(func_offset[-1] ,width,cur_activation[-1].label,isf)
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
@@ -1010,10 +997,11 @@ def p_VarSpec(p):
                 type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
 
                 if type1[0]==2 or type1[0]==3:
-                    tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label)
+                    tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label,0)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                 else:
-                    tmp_name = address_generate_compilername(func_offset[-1],p[2].children[0].leaf['width'],cur_activation[-1].label)
+                    isf=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                    tmp_name = address_generate_compilername(func_offset[-1],p[2].children[0].leaf['width'],cur_activation[-1].label,isf)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                     p[0].leaf["code"]=[]
 
@@ -1083,13 +1071,13 @@ def p_VarSpec(p):
                 
                 p[0].leaf["code"]+=p[5].children[ind].leaf["code"]
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
-                        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
                         func_offset[-1]+=4
                         p[0].leaf['code'].append(['cast-float', t2, p[5].children[ind].leaf['place']])
                         p[5].children[ind].leaf['place'] = t2
 
-                isfloat=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
-                tmp_name = address_generate_compilername(func_offset[-1],width,cur_activation[-1].label)
+                isf=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                tmp_name = address_generate_compilername(func_offset[-1],width,cur_activation[-1].label,isf)
                 cur_symtab[-1].data[p[1].children[ind].leaf["label"]] = values(
                     type=p[2].children[0].leaf["type"],
                     width=width,
@@ -1279,10 +1267,11 @@ def p_ParameterDecl(p):
         if t is None:
             type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
             if type1[0]==2 or type1[0]==3:
-                temp_name = address_generate_compilername(cur_offset[-1],4,cur_activation[-1].label)
+                temp_name = address_generate_compilername(cur_offset[-1],4,cur_activation[-1].label,0)
                 wi=4
             else:
-                temp_name = address_generate_compilername(cur_offset[-1],p[2].children[0].leaf["width"],cur_activation[-1].label)  
+                isf=is_float(p[2].children[0].leaf["type"],cur_symtab[-1])
+                temp_name = address_generate_compilername(cur_offset[-1],p[2].children[0].leaf["width"],cur_activation[-1].label,isf)  
                 wi=p[2].children[0].leaf["width"]  
             
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
@@ -1401,7 +1390,7 @@ def p_IncDecStmt(p):
               'Increment only allowed for numeric types')
         exit()
 
-    tmp_name = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+    tmp_name = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
     func_offset[-1]+=4
     if p[2] == "++":
         p[0].leaf["code"] = p[1].leaf["code"] + [[
@@ -1476,7 +1465,7 @@ def p_Assignments(p):
             
             p[0].leaf["code"]+=(p[1].children[ind].leaf["code"] + p[4].children[ind].leaf["code"] )
             if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
-                    t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
                     func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
@@ -1546,7 +1535,7 @@ def p_Assignments(p):
                 
                 operator = ""
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
-                    tmp_name = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    tmp_name = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
                     func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
@@ -1593,7 +1582,7 @@ def p_Assignments(p):
                 p[0].leaf['code'] += p[1].children[ind].leaf['code'] + p[4].children[ind].leaf['code']
                 operator = ""
                 if type1[0]>12 and type1[0]<=14 and type2[0]<=12:
-                    t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
                     func_offset[-1]+=4
                     p[0].leaf['code'].append(['cast-float', t2, p[4].children[ind].leaf['place']])
                     p[4].children[ind].leaf['place'] = t2
@@ -1631,8 +1620,8 @@ def p_ShortVarDecl(p):
 
     t = lookup(cur_symtab[-1], p[1])
     if t is None:
-        isfloat=is_float(p[4].children[0].leaf["type"],cur_symtab[-1])
-        tmp_name = address_generate_compilername(func_offset[-1],p[4].children[0].leaf["width"],cur_activation[-1].label)
+        isf=is_float(p[4].children[0].leaf["type"],cur_symtab[-1])
+        tmp_name = address_generate_compilername(func_offset[-1],p[4].children[0].leaf["width"],cur_activation[-1].label,isf)
         cur_symtab[-1].data[p[1]] = values(
             type=p[4].children[0].leaf["type"],
             offset=cur_offset[-1],
@@ -2011,7 +2000,7 @@ def p_ExprCaseClause(p):
         code1 = [["goto ", p[1].leaf["label"]]]
         code2 = [[p[1].leaf["label"] , ":"]] + p[4].leaf["code"]
     else:
-        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
         code1 = p[1].leaf["code"] + [[
             "==", t1, p[-1].leaf["place"], p[1].leaf["place"]
@@ -2345,7 +2334,7 @@ def p_Expression(p):
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 4
         # IR Gen
-        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
         p[0].leaf['code'].append(
@@ -2383,7 +2372,7 @@ def p_Term1(p):
         p[0].leaf["width"] = 4
 
         # IR Gen
-        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
         p[0].leaf['code'].append(
@@ -2440,17 +2429,17 @@ def p_Term2(p):
         
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
         if f1 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[4].leaf['place']])
             p[4].leaf['place'] = t1
         if f2 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[1].leaf['place']])
             p[1].leaf['place'] = t1
 
-        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
         p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t2
@@ -2503,17 +2492,17 @@ def p_Term2(p):
 
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
         if f1 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[4].leaf['place']])
             p[4].leaf['place'] = t1
         if f2 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[1].leaf['place']])
             p[1].leaf['place'] = t1
 
-        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
 
         p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
@@ -2617,18 +2606,22 @@ def p_Term3(p):
         
         
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        isf=0
+
         if f1 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[4].leaf['place']])
             p[4].leaf['place'] = t1
+            isf=1
         if f2 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t1, p[1].leaf['place']])
             p[1].leaf['place'] = t1
+            isf=1
 
-        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
         func_offset[-1]+=4
         p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t2
@@ -2689,18 +2682,21 @@ def p_Term4(p):
         # IR Gen
         
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        isf=0
         if f1 == 1:
             t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
             p[4].leaf['place'] = t2
+            isf=1
         if f2 == 1:
             t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
             p[1].leaf['place'] = t2
+            isf=1
 
-        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+        t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
         func_offset[-1]+=4
         p[0].leaf['code'].append([p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t1
@@ -2739,7 +2735,8 @@ def p_UnaryExp(p):
                       'Unary Operation +,- not allowed on given type')
                 exit()
             # IR Gen
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            isf=is_float(type1,cur_symtab[-1])
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
             func_offset[-1]+=4
             p[0].leaf['code'] = p[3].leaf['code']
             p[0].leaf['code'].append(
@@ -2751,7 +2748,7 @@ def p_UnaryExp(p):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation ! not allowed on given type')
                 exit()
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
             func_offset[-1]+=4
             p[0].leaf['code'] = p[3].leaf['code']
             p[0].leaf['code'].append(
@@ -2769,13 +2766,13 @@ def p_UnaryExp(p):
             p[0].leaf['code'] = p[3].leaf['code']
 
             if p[3].leaf["place"][0]=="*":
-                v1 = address_generate_compilername(func_offset[-1],p[0].children[0].leaf["width"],cur_activation[-1].label)
+                v1 = address_generate_compilername(func_offset[-1],p[0].children[0].leaf["width"],cur_activation[-1].label,0)
                 func_offset[-1]+=p[0].children[0].leaf["width"]
                 p[0].leaf["code"]+=[["=",v1,p[3].leaf["place"]]]
                 p[0].leaf["place"]="*"+v1
 
             elif p[3].leaf["place"][-1]=="]":
-                v1 = address_generate_compilername(func_offset[-1],p[0].children[0].leaf["width"],cur_activation[-1].label)
+                v1 = address_generate_compilername(func_offset[-1],p[0].children[0].leaf["width"],cur_activation[-1].label,0)
                 func_offset[-1]+=p[0].children[0].leaf["width"]
                 p[0].leaf["code"]+=[["=",v1,p[3].leaf["place"]]]
                 p[0].leaf["place"]="*"+v1
@@ -2798,7 +2795,7 @@ def p_UnaryExp(p):
             if p[3].leaf["place"][-1]=="]":
                 p[0].leaf["place"]="&"+p[3].leaf["place"]
             else:
-                v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                 func_offset[-1]+=4
                 p[0].leaf["code"]+=[["=",v1,"&"+p[3].leaf["place"]]]
                 p[0].leaf["place"]=v1
@@ -2897,11 +2894,11 @@ def p_PrimaryExpr(p):
 
                 
                 if p[1].leaf["place"][-1]=="]":
-                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
-                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
-                    v3 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    v3 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
                     v4 = p[2].leaf['place']
                     ind = (p[1].leaf["place"].split("["))[1][:-1]
@@ -2910,9 +2907,9 @@ def p_PrimaryExpr(p):
                     code.append(['+',v3,ind,v2])
                     place=p[1].leaf['place'].split("[")[0]+"["+v3+"]"
                 else:
-                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
-                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
                     v4 = p[2].leaf['place']
                     code.append(['=', v1, p[0].children[0].leaf['width']])
@@ -2928,6 +2925,7 @@ def p_PrimaryExpr(p):
                 exit()
             type1 = cur_symtab[0].data[nam].args
             type2 = cur_symtab[0].data[nam].type
+
             if len(p[1].children) != 1:
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Only function calling allowed "
@@ -2951,7 +2949,8 @@ def p_PrimaryExpr(p):
             p[0].leaf["statement"] = 1
 
             # IR Gen
-            v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            isf=is_float(type2,cur_symtab[-1])
+            v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
             func_offset[-1]+=4
             code.append(['push'])
             for i in range(len(type1)):
@@ -2997,7 +2996,8 @@ def p_BasicLit(p):
     p[1].leaf["label"] = "BasicLit"
     p[0] = p[1]
     #string not handles
-    p[0].leaf['place'] =  address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+    isf=is_float(p[0].children[0].leaf["type"],cur_symtab[-1])
+    p[0].leaf['place'] =  address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
     func_offset[-1]+=4
     p[0].leaf['code'] = [
         ['=', p[0].leaf['place'], p[0].children[0].leaf['label']],
