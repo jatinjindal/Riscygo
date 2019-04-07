@@ -1138,7 +1138,7 @@ def p_FunctionDecl(p):
     if p[1].children[1].leaf["label"] == "main":
         p[0].leaf["code"] += [["returnm"]]
     else:
-        p[0].leaf["code"] = [["return"]]
+        p[0].leaf["code"] += [["return"]]
     p[0].leaf["place"] = None
 
 
