@@ -98,7 +98,7 @@ def get_reg(name):
             asm.write('($fp)\n')
         asm.write('lw ' + get_name(*reg) + ',0(' + get_name(*reg) + ')\n')
         return get_name(*reg)
-    else if name[0] == '&':
+    elif name[0] == '&':
         # Getting an address of var
         name = name[1:]
         assert(name[:3] == 'var')
@@ -112,7 +112,7 @@ def get_reg(name):
             asm.write(',($fp),')
         asm.write(str(-rec['func_offset']) + '\n')
         return get_name(*reg)
-    else if len(name.split('.')) != 1:
+    elif len(name.split('.')) != 1:
         # Getting member of a struct
         member = name.split('.')[1]
         name = name.split('.')[0]
@@ -133,7 +133,8 @@ def get_reg(name):
             else:
                 asm.write('($fp)\n')
             asm.write('lw ' + get_name(*reg) + ',' + member + '(' + get_name(*reg) + ')\n')
-    else if len(name.split('[')) != 1:
+        return get_name(*reg)
+    elif len(name.split('[')) != 1:
         # Getting array member
         index = name.split('[')[1].split(']')[0]
         name = name.split('[')[0]
@@ -167,7 +168,8 @@ def get_reg(name):
             # load the value at reg + regi
             asm.write('add ' + get_name(*reg) + ',' +
                       get_name(*reg) + ',' + get_name(*regi) + '\n')
-            asm.write('lw ' + get_name(*reg) + ',0(' + get_name(*reg) + ')\n')
+            asm.write('lw ' + get_name(*regi) + ',0(' + get_name(*reg) + ')\n')
+        return get_name(*regi)
     else:
         # A normal var
         assert(name[:3] == 'var')
