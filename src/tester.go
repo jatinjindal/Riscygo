@@ -7,21 +7,16 @@ import "fmt";
 // }
 
 var a int=5
-func f() int{
-	t:=0;
-	return t;
-};
-
-var ar [3]int
-var c int=10
+var ar [5] int
 
 
 func main()int{
-	f();
+	// f();
 	// var r f
 	// r.a=1
 	// var c int=5
 	// var e float32=12.0
+	a=1
 	return 0;
 };
 

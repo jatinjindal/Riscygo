@@ -1,9 +1,6 @@
 scope-type,label,type,offset,width,args,place,typedef-map
-func,t,[3],0,4,None,var_2,{}
-global,a,[3],0,4,None,var_1,{}
+global,a,[3],0,4,None,var_2,{}
 global,main,[3],24,4,[],None,{}
-global,c,[3],20,4,None,var_4,{}
-global,ar,[2, 3, 3],8,12,None,var_3,{}
-global,f,[3],4,4,[],None,{}
+global,ar,[2, 5, 3],4,20,None,var_3,{}
 ------------------------------------------------------------
 tmp-label,offset,width
