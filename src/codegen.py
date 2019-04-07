@@ -9,6 +9,7 @@ code = []
 current_activation = "global"
 reg_map = [[None] * 10, [None] * 8]
 asm = None
+cur_reg=[]
 
 
 class activation_record:
@@ -37,13 +38,23 @@ def get_empty_register(set_name=None):
         if reg_map[1][x] == None:
             reg_map[1][x] = set_name
             return (1, x)
+
     ind1 = random.randint(0, 1)
     if ind1 == 0:
         ind2 = random.randint(0, 9)
     else:
         ind2 = random.randint(0, 7)
+    
+    while((ind1,ind2) in cur_reg):
+        ind1 = random.randint(0, 1)
+        if ind1 == 0:
+            ind2 = random.randint(0, 9)
+        else:
+            ind2 = random.randint(0, 7)
+        
+
     record = set_of_activations[current_activation].data[reg_map[ind1][ind2]]
-    record["isreg"] = -1
+    set_of_activations[current_activation].data[reg_map[ind1][ind2]]["isreg"] = -1
     if record["label"] == "global":
         asm.write("sw " + get_name(ind1, ind2) + "," +
                    str(-record["func_offset"]) + "($v1)\n")
@@ -58,10 +69,12 @@ def get_empty_register(set_name=None):
 def get_reg(name):
     record = set_of_activations[current_activation].data[name]
     if record["isreg"] != -1:
+        cur_reg.append(record["isreg"])
         return get_name(record["isreg"][0], record["isreg"][1])
     else:
         reg = get_empty_register(name)
         set_of_activations[current_activation].data[name]["isreg"] = reg
+        cur_reg.append(reg)
         return get_name(reg[0], reg[1])
 
 
@@ -131,6 +144,9 @@ def main():
     asm.write("mov $fp,$sp\n")
     for ins in code:
         generate_code(ins)
+        cur_reg=[]
+
+    asm.write("end:")
 
     # print "global_struct_length"
     # for nam in struct_length:
