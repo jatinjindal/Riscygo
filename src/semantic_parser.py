@@ -33,6 +33,7 @@ class activation_record:
         self.previous=previous
         self.label="global"
         self.total=0
+        self.ret_value_addr=None
         self.data={}
 
 class symtab:
@@ -615,7 +616,7 @@ def p_SourceFile(p):
     p[0] = Node("void", [p[2], p[3], p[5]], {"label": "Start"})
     p[0].leaf["code"] = p[5].leaf["code1"] + p[5].leaf["code2"]
     p[0].leaf["place"] = None
-    cur_activation[-1].total=func_offset[-1]
+    cur_activation[-1].total=func_offset[-1]-4
     set_of_activation["global"]=cur_activation[-1]    
     cur_activation.pop()
 
@@ -626,7 +627,7 @@ def p_A(p):
     '''
     cur_symtab.append(symtab())
     cur_offset.append(0)
-    func_offset.append(0)
+    func_offset.append(4)
     cur_activation.append(activation_record())
 
 
@@ -1118,7 +1119,7 @@ def p_FunctionDecl(p):
     top = cur_symtab[-1]
     top.total = cur_offset[-1]
     dump_st()
-    cur_activation[-1].total=func_offset[-1]
+    cur_activation[-1].total=func_offset[-1]-4
     set_of_activation[cur_symtab[-1].label_map[0]]=cur_activation[-1]
     cur_symtab.pop()
     cur_offset.pop()
@@ -1134,7 +1135,10 @@ def p_FunctionDecl(p):
     p[0].leaf["label"] = "FunctionDecl"
     p[0].leaf["code"] = [[p[1].children[1].leaf["label"] , ":"]]
     p[0].leaf["code"] += p[2].leaf["code"]
-    p[0].leaf["code"] += [["return"]]
+    if p[1].children[1].leaf["label"] == "main":
+        p[0].leaf["code"] += [["returnm"]]
+    else:
+        p[0].leaf["code"] = [["return"]]
     p[0].leaf["place"] = None
 
 
@@ -1174,7 +1178,7 @@ def p_FunctionName(p):
     cur_symtab[len(cur_symtab) - 1].children[p[1]] = t_new
     cur_symtab.append(t_new)
     cur_offset.append(0)
-    func_offset.append(0)
+    func_offset.append(4)
     cur_activation.append(a_new)
 
 
@@ -1202,11 +1206,12 @@ def p_Signature(p):
         ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
-    running_offset=-4 #frame pointer
+    running_offset=0 #frame pointer
     for i in reversed(range(0,len(p[1].leaf["list"]))):
         running_offset-=p[1].leaf["width"][i]
         cur_symtab[-1].data[p[1].leaf["list"][i]].offset=running_offset
         cur_activation[-1].data[cur_symtab[-1].data[p[1].leaf["list"][i]].place]["func_offset"]=running_offset
+    cur_activation[-1].ret_value_addr=running_offset-4
 
 
 
@@ -1271,7 +1276,7 @@ def p_ParameterDecl(p):
         t = lookup(cur_symtab[len(cur_symtab) - 1], p[1])
         if t is None:
             type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
-            if type1[0]==2 or type1[0]==3:
+            if type1[0]==2 or type1[0]==3 and len(type1)%2==0:
                 temp_name = address_generate_compilername(cur_offset[-1],4,cur_activation[-1].label,0)
                 wi=4
             else:
@@ -1680,7 +1685,11 @@ def p_ReturnStmt(p):
             exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"})],
                     {"label": "ReturnStmt"})
-        p[0].leaf["code"] = [["return"]]
+        if func == "main":
+            p[0].leaf["code"] = [["returnm"]]
+        else:
+            p[0].leaf["code"] = [["return"]]    
+        
         p[0].leaf["place"] = None
     else:
         if len(p[2].leaf["type"]) != 1:
@@ -1692,9 +1701,14 @@ def p_ReturnStmt(p):
             exit()
         p[0] = Node("void", [Node("void", [], {"label": "return"}), p[2]],
                     {"label": "ReturnStmt"})
-        p[0].leaf["code"] = p[2].leaf["code"] + [[
-            "return", p[2].leaf["place"][0]
-        ]]
+        if func=="main":
+            p[0].leaf["code"] = p[2].leaf["code"] + [[
+                "returnm", p[2].leaf["place"][0]
+            ]]
+        else:                
+            p[0].leaf["code"] = p[2].leaf["code"] + [[
+                "return", p[2].leaf["place"][0]
+            ]]
         p[0].leaf["place"] = None
 
 
