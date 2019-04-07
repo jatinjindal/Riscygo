@@ -1,0 +1,9 @@
+var1 = *var2
+var1 = &var2
+var1 = var2[ind] (case for whether len var2=0 or not)
+var1 = literal
+var1 = var2
+var1 = var2.literal (case for whether len var2=0 or not)
+
+Similarly all for *var1 and var1[ind] and var1.literal
+

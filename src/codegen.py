@@ -70,15 +70,18 @@ def get_empty_register(set_name=None):
 
 
 def get_reg(name):
-    record = set_of_activations[current_activation].data[name]
-    if record["isreg"] != -1:
-        cur_reg.append(record["isreg"])
-        return get_name(record["isreg"][0], record["isreg"][1])
+    if name in set_of_activations[current_activation].data:
+        record = set_of_activations[current_activation].data[name]
+        if record["isreg"] != -1:
+            cur_reg.append(record["isreg"])
+            return get_name(record["isreg"][0], record["isreg"][1])
+        else:
+            reg = get_empty_register(name)
+            set_of_activations[current_activation].data[name]["isreg"] = reg
+            return get_name(reg[0], reg[1])
     else:
-        reg = get_empty_register(name)
-        set_of_activations[current_activation].data[name]["isreg"] = reg
-        return get_name(reg[0], reg[1])
-
+        reg = get_empty_register()
+        return get_name(reg[0],reg[1])
 
 def get_rec(name):
     global set_of_activations
@@ -89,7 +92,7 @@ def get_rec(name):
 def handle_assign(dst, src):
     global asm
     # TODO: Handle floating point registers
-    assert(dst[:3] = "var")
+    assert(dst[:3] == "var")
     if type(src) == str:
         assert(src[:3] == "var")
         reg = get_reg(src)
@@ -109,13 +112,33 @@ def handle_assign(dst, src):
             width += 4
     elif type(src) == int or type(src) == float:
         reg = get_reg(src)
-        rec = get_rec(dst)
         asm.write("addi " + reg + ",$r0," + str(src))
-        asm.write("sw " + reg + "," + str(-rec["func_offset"]))
-        if record["label"] == "global":
-            asm.write("($v1)\n")
-        else:
-            asm.write("($fp)\n")
+        
+
+        if dst[:3] == "var":
+            rec = get_rec(dst)
+            asm.write("sw " + reg + "," + str(-rec["func_offset"]))
+            if rec["label"] == "global":
+                asm.write("($v1)\n")
+            else:
+                asm.write("($fp)\n")
+        elif dst[0] == "*":
+            reg2 = get_empty_reg()
+            rec = get_rec(dst[1:])
+            asm.write("lw " + reg2 + "," + str(-rec["func_offset"]))
+            if rec["label"] == "global":
+                asm.write("($v1)\n")
+            else:
+                asm.write("($fp)\n")
+            asm.write("sw " + reg + ",0("+reg2+")")
+        elif dst[-1] == "]":
+            dst_nam = dst.split("[")[0]
+            index = dst.split("[")[1][:-1]
+            rec = get_rec(dst_nam)
+            if rec["width"]==0:
+                reg2 = get_empty_reg()
+
+
 
 
 def generate_code(ins):
