@@ -10,7 +10,6 @@ current_activation = "global"
 reg_map = [[None] * 10, [None] * 8]
 asm = None
 cur_reg=[]
-first_func=0
 
 
 class activation_record:
@@ -18,6 +17,8 @@ class activation_record:
         self.previous = previous
         self.label = "global"
         self.data = {}
+        self.total=0
+        self.ret_value_addr=None
 
 
 def get_name(ind1, ind2):
@@ -115,9 +116,7 @@ def get_rec(name):
 def handle_assign(dst, src):
     global asm
     # TODO: Handle floating point registers
-    # assert(dst[:3] == "var")
-
-        
+    # assert(dst[:3] == "var")        
 
     if dst[:3] == "var":
         reg = get_reg(src)
@@ -167,20 +166,55 @@ def generate_code(ins):
     if ins[0] == "=":
         assert(len(ins) == 3)
         handle_assign(ins[1], ins[2])
-    elif len(ins) == 2 and first_func == 0:
-        first_func = 1
+    elif ins[0]=="returnm":
+        if len(ins)==1:
+            asm.write("addi $sp,$sp,"+str(set_of_activations["main"].total)+"\n")
+            asm.write("sw $fp,0($sp)\n")
+            asm.write("addi $sp,$sp,4\n")
+            asm.write("addi $sp,$sp,"+str(set_of_activations["global"].total)+"\n")
+            asm.write("jr $ra\n")
+        else:
+            reg=get_reg(ins[1])
+            ret_off=set_of_activations[current_activation].ret_value_addr
+           # asm.write("sw "+reg+","++"\n")
+
+
+    elif len(ins)==2 and ins[0]=="printInt":
+        reg=get_reg(ins[1])
+        asm.write("move $a0"+","+reg+"\n")
+        asm.write("li $v0,1\n")
+        asm.write("syscall\n")
+
+    elif len(ins) == 2 and ins[0] in set_of_activations and ins[0]=="main": 
+        asm.write("main:")       
+        asm.write("move $v1,$sp\n")
+        asm.write("move $fp,$sp\n")
+        current_activation="global"
+        asm.write("addi $sp,$sp,"+str(-set_of_activations["global"].total)+"\n")
+
+        
+    elif len(ins) == 2 and  ins[0]=="EndOfDecl":
+        for x in range(0, 10):
+            reg_map[0][x]=None
+        for x in range(0, 8):
+            reg_map[1][x]=None
         #do a function call to save current registers
-        current_activation=ins[0]
         asm.write("addi $sp,$sp,-4\n")
-        asm.write("sw $ra,0($sp)\n")
-        asm.write("jal main\n")
-        asm.write("goto end\n")
-        asm.write(ins[0]+ins[1]+"\n")
+        asm.write("sw $fp,0($sp)\n")
+        asm.write("move $fp,$sp\n")
+        current_activation="main"
+        asm.write("addi $sp,$sp,"+str(-set_of_activations[current_activation].total)+"\n")
+
     elif len(ins)==2 and ins[0] in set_of_activations:
+        for x in range(0, 10):
+            reg_map[0][x]=None
+        for x in range(0, 8):
+            reg_map[1][x]=None
         asm.write(ins[0]+ins[1]+"\n")
         current_activation=ins[0]
-        asm.write("mov $fp,$sp\n")
+        asm.write("move $fp,$sp\n")
         asm.write("addi $sp,$sp,"+str(-set_of_activations[current_activation].total)+"\n")
+
 
 
 def main():
@@ -211,22 +245,33 @@ def main():
         for item in set_of_activations[nam].data:
             print item,set_of_activations[nam].data[item]["func_offset"],set_of_activations[nam].data[item]["label"],set_of_activations[nam].data[item]["width"]
         print set_of_activations[nam].total
+        print set_of_activations[nam].ret_value_addr
     print "\n"
-    print code
-    
+    # exit()
+    global_decl=[]
+    leng=0
+    for decl in code:
+        if len(decl)==2 and decl[0] in set_of_activations:
+            break
+        else:
+            global_decl.append(decl)
+            leng+=1
+    for i in range(leng):
+        del code[0]
+
+    for ind in range(len(code)):
+        if len(code[ind])==2 and code[ind][0]=='main':
+            code=code[:ind+1]+global_decl+[["EndOfDecl",":"]]+code[ind+1:]
+            break
+
+
     asm.write(".text\n")
-    asm.write("mov $v1,$sp\n")
-    asm.write("mov $fp,$sp\n")
-    asm.write("addi $sp,$sp,"+str(-set_of_activations["global"].total)+"\n")
+    asm.write(".globl main\n")
+    
     for ins in code:
         generate_code(ins)
         cur_reg=[]
 
-    asm.write("end:\n")
-    asm.write("lw $ra,0($sp)\n")
-    asm.write("addi $sp,$sp,4\n")
-    asm.write("addi $sp,$sp,"+str(set_of_activations["global"].total)+"\n")
-    asm.write("jr $ra\n")
 
 
 
