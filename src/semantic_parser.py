@@ -116,7 +116,9 @@ def is_float(type1,table):
 
 
 def first_nontypedef(type1, table):
-    if type1[0] != 5:
+    if len(type1)==0:
+        return type1
+    elif type1[0] != 5:
         return type1
     else:
         return first_nontypedef(table.typedef_map[type1[1]]["type"], table)
@@ -1834,7 +1836,7 @@ def p_IfStmt(p):
 
         # elif_count = 0
         p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + [[
-            p[2].leaf["label"] + ".false: "
+            p[2].leaf["label"] + ".false",":"
         ]]
         p[0].leaf["place"] = None
         if p[-1] == "else":
@@ -1862,7 +1864,7 @@ def p_IfStmt(p):
 
         p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + p[4].leaf[
             "code"] + p[6].leaf["code"] + p[7].leaf["code"] + [[
-                p[2].leaf["next"] + ": "
+                p[2].leaf["next"] , ": "
             ]]
         p[0].leaf["place"] = None
 
@@ -1875,7 +1877,7 @@ def p_IfStmt(p):
         ], {"label": "IfStmt"})
 
         p[0].leaf["code"] = p[2].leaf["code"] + p[3].leaf["code"] + p[4].leaf[
-            "code"] + [[p[2].leaf["label"] + ".false: "]] + p[6].leaf["code"]
+            "code"] + [[p[2].leaf["label"] + ".false",":"]] + p[6].leaf["code"]
         p[0].leaf["place"] = None
 
 
@@ -1942,7 +1944,7 @@ def p_ElseMarker(p):
     cur_offset.append(0)
     p[0] = Node("void", [], {"label": "else"})
 
-    p[0].leaf["code"] = [[p[-4].leaf["label"] + ".false:  "]]
+    p[0].leaf["code"] = [[p[-4].leaf["label"] + ".false",":"]]
 
 
 def p_SwitchStmt(p):
@@ -1964,7 +1966,7 @@ def p_ExprSwitchStmt(p):
     code += p[7].leaf["code1"]
     code += [["goto ", p[6].leaf["label"] + ".next"]]
     code += p[7].leaf["code2"]
-    code += [[p[6].leaf["label"] + ".next : "]]
+    code += [[p[6].leaf["label"] + ".next",":"]]
     p[0].leaf["code"] = code
 
 
@@ -2093,9 +2095,8 @@ def p_ForStmt(p):
         p[0] = Node("void", [Node("void", [], {"label": "for"}), p[3]],
                     {"label": "ForStmt"})
         code = p[4].leaf["code"] + [["goto ", p[2].leaf["label"]]]
-
-        for_start = p[2].leaf["label"] + ": "
-        p[0].leaf["code"] = [[for_start]] + code
+ 
+        p[0].leaf["code"] = [[p[2].leaf["label"] ,":"]] + code
 
     else:
         p[0] = Node("void", [Node("void", [], {"label": "for"}), p[3], p[4]],
@@ -2110,7 +2111,7 @@ def p_ForStmt(p):
             code += [[p[2].leaf["label"] + ".next",":"]]
             p[0].leaf["code"] = code
         else:
-            code = p[4].leaf["code"][0] + [[p[2].leaf["label"] + ": "]
+            code = p[4].leaf["code"][0] + [[p[2].leaf["label"] + ":"]
                                            ] + p[4].leaf["code"][1]
             if p[4].leaf["place"] is not None:
                 code += [[
@@ -2119,7 +2120,7 @@ def p_ForStmt(p):
                 ]]
             code += p[5].leaf["code"] + [[
                 p[2].leaf["label"] + ".post",":"]] + p[4].leaf["code"][2] + [["goto ", p[2].leaf["label"]]
-                                         ] + [[p[2].leaf["label"] + ".next: "]]
+                                         ] + [[p[2].leaf["label"] + ".next",":"]]
             p[0].leaf["code"] = code
             p[0].leaf["label"] = None
 

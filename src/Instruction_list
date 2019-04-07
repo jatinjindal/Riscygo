@@ -1,9 +1,89 @@
+lets not implement &Not
+["+",var1,var2] is useless right?
+
+#ASSIGNMENT
 var1 = *var2
 var1 = &var2
 var1 = var2[ind] (case for whether len var2=0 or not)
 var1 = literal
 var1 = var2
 var1 = var2.literal (case for whether len var2=0 or not)
-
 Similarly all for *var1 and var1[ind] and var1.literal
+
+#I/O
+["printInt",var1]
+["scanInt",var1]
+["printStr",var1]
+Similarly all for *var1 and var1[ind] and var1.literal
+
+#malloc
+["malloc",var1,var2]
+Similarly all for *var1 and var1[ind] and var1.literal
+
+#Return
+["return"]
+["return",var1]
+Similarly all for *var1 and var1[ind] and var1.literal
+
+#Break/#Continue
+["goto",lable]
+
+#Labels
+[label,":"]
+
+#casttofloat
+["cast-float",var1,var2]
+
+#IF
+["iffalse",var1,"goto",label]
+Similarly all for *var1 and var1[ind] and var1.literal
+
+#CASE
+["ifftrue",var1,"goto",label]
+Similarly all for *var1 and var1[ind] and var1.literal
+
+#UnaaryOps
+["+",var1,var2]
+["-",var1,var2]
+["!",var1,var2]
+
+Expressions
+["+",var1,var2,var3]
+["-",var1,var2,var3]
+["/",var1,var2,var3]
+["*",var1,var2,var3]
+["&",var1,var2,var3]
+["|",var1,var2,var3]
+["^",var1,var2,var3]
+[">>",var1,var2,var3]
+["<<",var1,var2,var3]
+["%",var1,var2,var3]
+["+int",var1,var2,var3]
+["+float",var1,var2,var3]
+["-int",var1,var2,var3]
+["-float",var1,var2,var3]
+["*int",var1,var2,var3]
+["*float",var1,var2,var3]
+["/int",var1,var2,var3]
+["/float",var1,var2,var3]
+["&&",var1,var2,var3]
+["||",var1,var2,var3]
+
+
+["<",var1,var2,var3]
+[">",var1,var2,var3]
+["<=",var1,var2,var3]
+[">=",var1,var2,var3]
+["==",var1,var2,var3]
+["!=",var1,var2,var3]
+ALL these with ==int,==float ...etc.
+
+
+#Functioncalls
+['push']
+['push',var1]
+['pop']
+['pop',var1]
+['call',func_name,no_of_args]
+
 
