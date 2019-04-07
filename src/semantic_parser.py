@@ -2493,32 +2493,31 @@ def p_Term2(p):
         ], {"label": "Term2"})
         f1 = 0
         f2 =0
-        if check_type(type1, type2, cur_symtab[-1]) == 0:
 
-            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                       and type2[0] <= 12):
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-                p[2] = p[2].children[0].leaf["label"] +  "int"
+        if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
+                                                   and type2[0] <= 12):
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
+            p[2] = p[2].children[0].leaf["label"] +  "int"
 
-            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                         and type2[0] <= 14):
-                if type1[0] >= 3 and type1[0] <= 12:
-                    f1 = 1
-                if type2[0] >= 3 and type2[0] <= 12:
-                    f2 = 1
-                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
-                p[2] = p[2].children[0].leaf["label"] +  "float"
+        elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
+                                                     and type2[0] <= 14):
+            if type1[0] >= 3 and type1[0] <= 12:
+                f1 = 1
+            if type2[0] >= 3 and type2[0] <= 12:
+                f2 = 1
+            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+            p[2] = p[2].children[0].leaf["label"] +  "float"
 
-            elif type1[0] == 16 and type2[0] == 16:
-                p[0].leaf["type"], p[0].leaf["width"] = [
-                    16
-                ], p[1].leaf["width"] + p[4].leaf["width"]
-                p[2] = p[2].children[0].leaf["label"] +  "string"
+        elif type1[0] == 16 and type2[0] == 16:
+            p[0].leaf["type"], p[0].leaf["width"] = [
+                16
+            ], p[1].leaf["width"] + p[4].leaf["width"]
+            p[2] = p[2].children[0].leaf["label"] +  "string"
 
-            else:
-                print("[line:" + str(p.lineno(1)) + "]" +
-                      'Arithmetic operation not allowed for given type')
-                exit()
+        else:
+            print("[line:" + str(p.lineno(1)) + "]" +
+                  'Arithmetic operation not allowed for given type')
+            exit()
 
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 4
