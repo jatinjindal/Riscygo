@@ -30,13 +30,15 @@ def get_empty_register(set_name=None):
     global asm
     # Pick from temporary
     for x in range(0, 10):
-        if reg_map[0][x] == None:
+        if reg_map[0][x] == None and (0,x) not in cur_reg:
             reg_map[0][x] = set_name
+            cur_reg.append((0,x))
             return (0, x)
     # Pick from saved
     for x in range(0, 8):
-        if reg_map[1][x] == None:
+        if reg_map[1][x] == None and (0,x) not in cur_reg:
             reg_map[1][x] = set_name
+            cur_reg.append((1,x))
             return (1, x)
 
     ind1 = random.randint(0, 1)
@@ -63,6 +65,7 @@ def get_empty_register(set_name=None):
                    str(-record["func_offset"]) + "($fp)\n")
 
     reg_map[ind1][ind2] = set_name
+    cur_reg.append((ind1,ind2))
     return (ind1, ind2)
 
 
@@ -74,7 +77,6 @@ def get_reg(name):
     else:
         reg = get_empty_register(name)
         set_of_activations[current_activation].data[name]["isreg"] = reg
-        cur_reg.append(reg)
         return get_name(reg[0], reg[1])
 
 
