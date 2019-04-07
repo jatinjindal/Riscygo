@@ -111,6 +111,29 @@ def get_rec(name):
     else:
         return set_of_activations["global"].data[name] 
 
+def off_load():
+    for x in range(0,10):
+        if reg_map[0][x]!=None:
+            record = get_rec(reg_map[0][x])
+            record["isreg"] = -1
+            if record["label"] == "global":
+                asm.write("sw " + get_name(0, x) + "," +
+                           str(-record["func_offset"]) + "($v1)\n")
+            else:
+                asm.write("sw " + get_name(0,x) + "," +
+                           str(-record["func_offset"]) + "($fp)\n")
+    for x in range(0,8):
+        if reg_map[1][x]!=None:
+            record = get_rec(reg_map[1][x])
+            record["isreg"] = -1
+            if record["label"] == "global":
+                asm.write("sw " + get_name(1,x) + "," +
+                           str(-record["func_offset"]) + "($v1)\n")
+            else:
+                asm.write("sw " + get_name(1,x) + "," +
+                           str(-record["func_offset"]) + "($fp)\n")
+
+
 
 def handle_assign(dst, src):
     global asm
@@ -217,6 +240,7 @@ def generate_code(ins):
         asm.write("sw $ra,4($sp)\n")
         asm.write("sw $fp,0($sp)\n")
         asm.write("move $fp,$sp\n")
+        off_load()
         asm.write("jal "+ins[1]+"\n")
         asm.write("lw $fp,0($sp)\n")
         asm.write("lw $ra,4($sp)\n")
