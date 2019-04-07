@@ -31,6 +31,7 @@ def get_empty_register(set_name=None):
     global asm
     global set_of_activations
     global current_activation
+    global cur_reg
     # Pick from temporary
     for x in range(0, 10):
         if reg_map[0][x] == None and (0,x) not in cur_reg:
@@ -39,7 +40,7 @@ def get_empty_register(set_name=None):
             return (0, x)
     # Pick from saved
     for x in range(0, 8):
-        if reg_map[1][x] == None and (0,x) not in cur_reg:
+        if reg_map[1][x] == None and (1,x) not in cur_reg:
             reg_map[1][x] = set_name
             cur_reg.append((1,x))
             return (1, x)
@@ -55,11 +56,10 @@ def get_empty_register(set_name=None):
         if ind1 == 0:
             ind2 = random.randint(0, 9)
         else:
-            ind2 = random.randint(0, 7)
-        
+            ind2 = random.randint(0, 7)      
 
-    record = set_of_activations[current_activation].data[reg_map[ind1][ind2]]
-    set_of_activations[current_activation].data[reg_map[ind1][ind2]]["isreg"] = -1
+    record = get_rec(reg_map[ind1][ind2])
+    record["isreg"] = -1
     if record["label"] == "global":
         asm.write("sw " + get_name(ind1, ind2) + "," +
                    str(-record["func_offset"]) + "($v1)\n")
@@ -75,19 +75,31 @@ def get_empty_register(set_name=None):
 def get_reg(name):
     global set_of_activations
     global current_activation
+    global cur_reg
+    
 
-    if name in set_of_activations[current_activation].data:
-        record = set_of_activations[current_activation].data[name]
+    if type(name) == int or type(name) == float:
+        reg=get_empty_register()
+        reg_name = get_name(reg[0],reg[1])
+        asm.write("li " + reg_name+","+str(name)+"\n")
+        return reg_name
+
+    record=get_rec(name)    
+    if name[:3]=="var":
         if record["isreg"] != -1:
             cur_reg.append(record["isreg"])
             return get_name(record["isreg"][0], record["isreg"][1])
         else:
             reg = get_empty_register(name)
-            set_of_activations[current_activation].data[name]["isreg"] = reg
+            record["isreg"] = reg
+            asm.write("lw "+get_name(reg[0],reg[1])+","+str(-record["func_offset"]))
+            if record["label"] == "global":
+                asm.write("($v1)\n")
+            else:
+                asm.write("($fp)\n")
             return get_name(reg[0], reg[1])
-    else:
-        reg = get_empty_register()
-        return get_name(reg[0],reg[1])
+
+    
 
 def get_rec(name):
     global set_of_activations
@@ -103,30 +115,12 @@ def get_rec(name):
 def handle_assign(dst, src):
     global asm
     # TODO: Handle floating point registers
-    assert(dst[:3] == "var")
-    if type(src) == str:
-        assert(src[:3] == "var")
-        reg = get_reg(src)
-        # rec1, rec2 = get_rec(dst), get_rec(src)
-        # width = 0
-        # while rec1['width'] - width > 0:
-        #     asm.write("lw " + reg + "," + str(-(rec2["func_offset"] + width)))
-        #     if record["label"] == "global":
-        #         asm.write("($v1)\n")
-        #     else:
-        #         asm.write("($fp)\n")
-        #     asm.write("sw " + reg + "," + str(-(rec1["func_offset"] + width)))
-        #     if record["label"] == "global":
-        #         asm.write("($v1)\n")
-        #     else:
-        #         asm.write("($fp)\n")
-        #     width += 4
-    elif type(src) == int or type(src) == float:
-        reg = get_name(get_empty_register()[0],get_empty_register()[1])
-        asm.write("li " + reg+","+str(src)+"\n")
+    # assert(dst[:3] == "var")
+
         
 
     if dst[:3] == "var":
+        reg = get_reg(src)
         rec = get_rec(dst)
         asm.write("sw " + reg + "," + str(-rec["func_offset"]))
         if rec["label"] == "global":
@@ -134,7 +128,9 @@ def handle_assign(dst, src):
         else:
             asm.write("($fp)\n")
     elif dst[0] == "*":
-        reg2 = get_name(get_empty_register()[0],get_empty_register()[1])
+        reg = get_reg(src)
+        reg_emp=get_empty_register()
+        reg2 = get_name(reg_emp[0],reg_emp[1])
         rec = get_rec(dst[1:])
         asm.write("lw " + reg2 + "," + str(-rec["func_offset"]))
         if rec["label"] == "global":
@@ -143,13 +139,16 @@ def handle_assign(dst, src):
             asm.write("($fp)\n")
         asm.write("sw " + reg + ",0("+reg2+")\n")
     elif dst[-1] == "]":
+        reg = get_reg(src)
         dst_nam = dst.split("[")[0]
         index = dst.split("[")[1][:-1]
         rec = get_rec(dst_nam)
         if rec["width"]==0:
-            reg2 = get_name(get_empty_register()[0],get_empty_register()[1])
+            reg_emp=get_empty_register()
+            reg2 = get_name(reg_emp[0],reg_emp[1])
             reg_index = get_reg(index)
-            asm.write("addi " + reg2 + ","+reg_index+","+str(-rec["func_offset"])+"\n")
+            #it should be +func_offset
+            asm.write("addi " + reg2 + ","+reg_index+","+str(rec["func_offset"])+"\n")
             if rec["label"] == "global":
                 asm.write("sub "+reg2+",$v1,"+reg2+"\n")
             else:
@@ -176,6 +175,7 @@ def generate_code(ins):
         asm.write("sw $ra,0($sp)\n")
         asm.write("jal main\n")
         asm.write("goto end\n")
+        asm.write(ins[0]+ins[1]+"\n")
     elif len(ins)==2 and ins[0] in set_of_activations:
         asm.write(ins[0]+ins[1]+"\n")
         current_activation=ins[0]
@@ -188,6 +188,7 @@ def main():
     global struct_length
     global code
     global asm
+    global cur_reg
 
     with open('activation.pickle', 'rb') as handle:
         set_of_activations = pickle.load(handle)
@@ -212,7 +213,7 @@ def main():
         print set_of_activations[nam].total
     print "\n"
     print code
-
+    
     asm.write(".text\n")
     asm.write("mov $v1,$sp\n")
     asm.write("mov $fp,$sp\n")
