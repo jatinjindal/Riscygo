@@ -1206,7 +1206,7 @@ def p_Signature(p):
         ], {"label": "Signature"})
     else:
         p[0] = Node("void", [p[1], p[2]], {"label": "Signature"})
-    running_offset=0 #frame pointer
+    running_offset=-4 #frame pointer
     for i in reversed(range(0,len(p[1].leaf["list"]))):
         running_offset-=p[1].leaf["width"][i]
         cur_symtab[-1].data[p[1].leaf["list"][i]].offset=running_offset
