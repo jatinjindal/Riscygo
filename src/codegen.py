@@ -105,8 +105,7 @@ def get_reg(name):
 def get_rec(name):
     global set_of_activations
     global current_activation
-    print name
-    print len(name)
+
     if name in set_of_activations[current_activation].data:
         return set_of_activations[current_activation].data[name]
     else:
@@ -166,7 +165,7 @@ def generate_code(ins):
     if ins[0] == "=":
         assert(len(ins) == 3)
         handle_assign(ins[1], ins[2])
-    elif ins[0]=="returnm":
+    elif  ins[0]=="returnm":
         if len(ins)==1:
             asm.write("addi $sp,$sp,"+str(set_of_activations["main"].total)+"\n")
             asm.write("sw $fp,0($sp)\n")
@@ -176,6 +175,67 @@ def generate_code(ins):
         else:
             reg=get_reg(ins[1])
             ret_off=set_of_activations[current_activation].ret_value_addr
+            asm.write("sw "+reg+","+str(-ret_off)+"($fp)\n")
+            asm.write("addi $sp,$sp,"+str(set_of_activations[current_activation].total)+"\n")
+            asm.write("jr $ra\n")
+    elif ins[0]=="return":
+        if len(ins)==2:
+            reg=get_reg(ins[1])
+            ret_off=set_of_activations[current_activation].ret_value_addr
+            asm.write("sw "+reg+","+str(-ret_off)+"($fp)\n")
+        asm.write("addi $sp,$sp,"+str(set_of_activations[current_activation].total)+"\n")
+        asm.write("jr $ra\n")
+
+    elif len(ins)==1 and ins[0]=="push":
+        asm.write("addi $sp,$sp,-4\n")
+
+    elif len(ins)==2 and ins[0]=="push":
+        if ins[1][:3]=="var":
+            rec=get_rec(ins[1])
+            if rec["width"]==0:
+                reg_emp=get_empty_register()
+                reg2 = get_name(reg_emp[0],reg_emp[1])
+                asm.write("li " + reg2 + ","+str(rec["func_offset"])+"\n")
+                if rec["label"] == "global":
+                    asm.write("sub "+reg2+",$v1,"+reg2+"\n")
+                else:
+                    asm.write("sub "+reg2+",$fp,"+reg2+"\n")
+                asm.write("addi $sp,$sp,-4\n")
+                asm.write("sw " + reg + ",0($sp)\n")
+
+            else:
+                reg=get_reg(ins[1])
+                asm.write("addi $sp,$sp,-4\n")
+                asm.write("sw "+reg+",0($sp)\n")    
+        else:
+            reg=get_reg(ins[1])
+            asm.write("addi $sp,$sp,-4\n")
+            asm.write("sw "+reg+",0($sp)\n")
+
+    elif len(ins)==3 and ins[0]=="call":
+        asm.write("addi $sp,$sp,-8\n")
+        asm.write("sw $ra,4($sp)\n")
+        asm.write("sw $fp,0($sp)\n")
+        asm.write("move $fp,$sp\n")
+        asm.write("jal "+ins[1]+"\n")
+        asm.write("lw $fp,0($sp)\n")
+        asm.write("lw $ra,4($sp)\n")
+        asm.write("addi $sp,$sp,8\n")
+
+    elif len(ins)==1 and ins[0]=="pop":
+        asm.write("addi $sp,$sp,4\n")
+
+    elif len(ins)==2 and ins[0]=="pop":
+        rec=get_rec(ins[1])
+        reg_emp=get_empty_register(None)
+        reg_name=get_name(reg_emp[0],reg_emp[1])
+        asm.write("lw "+reg_name+",0($sp)\n")
+        asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        if rec["label"] == "global":
+            asm.write("($v1)\n")
+        else:
+            asm.write("($fp)\n")
+        asm.write("addi $sp,$sp,4\n")
            # asm.write("sw "+reg+","++"\n")
 
 
@@ -212,7 +272,6 @@ def generate_code(ins):
             reg_map[1][x]=None
         asm.write(ins[0]+ins[1]+"\n")
         current_activation=ins[0]
-        asm.write("move $fp,$sp\n")
         asm.write("addi $sp,$sp,"+str(-set_of_activations[current_activation].total)+"\n")
 
 
@@ -248,6 +307,7 @@ def main():
         print set_of_activations[nam].ret_value_addr
     print "\n"
     # exit()
+    print code
     global_decl=[]
     leng=0
     for decl in code:
@@ -267,6 +327,7 @@ def main():
 
     asm.write(".text\n")
     asm.write(".globl main\n")
+    print code
     
     for ins in code:
         generate_code(ins)
