@@ -4,5 +4,5 @@ main,:
 =,var_4,1
 =,var_2,var_4
 =,var_5,0
-return,var_5
-return
+returnm,var_5
+returnm
