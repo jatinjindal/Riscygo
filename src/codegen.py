@@ -132,15 +132,17 @@ def get_reg(name):
         name = name.split('[')[0]
         assert (name[:3] == 'var' and index[:3] == 'var')
         # Load the value of index
+
         regi = get_reg(index)
         rec = get_rec(name)
         off = rec['func_offset']
         if rec['width'] == 0:
-            asm.write('sub ' + regi + ',' + regi + ',')
+            asm.write('sub ' + regi + ',')
             if rec['label'] == 'global':
-                asm.write('$v1\n')
+                asm.write('$v1')
             else:
-                asm.write('$fp\n')
+                asm.write('$fp')
+            asm.write(', '+regi+"\n")
             asm.write('lw ' + regi + ',' + str(-off) + '(' + regi + ')\n')
         else:
             reg = get_reg(name)
@@ -304,7 +306,7 @@ def generate_code(ins):
                 else:
                     asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
                 asm.write("addi $sp,$sp,-4\n")
-                asm.write("sw " + reg + ",0($sp)\n")
+                asm.write("sw " + reg2 + ",0($sp)\n")
 
             else:
                 reg = get_reg(ins[1])
