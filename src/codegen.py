@@ -134,6 +134,7 @@ def get_reg(name):
         name = name.split('[')[0]
         assert (name[:3] == 'var' and index[:3] == 'var')
         # Load the value of index
+
         regi = get_reg(index)
         rec = get_rec(name)
         off = rec['func_offset']
@@ -305,7 +306,7 @@ def generate_code(ins):
                 else:
                     asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
                 asm.write("addi $sp,$sp,-4\n")
-                asm.write("sw " + reg + ",0($sp)\n")
+                asm.write("sw " + reg2 + ",0($sp)\n")
 
             else:
                 reg = get_reg(ins[1])
