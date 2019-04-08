@@ -90,7 +90,7 @@ def get_reg(name):
         assert (name[:3] == 'var')
         rec = get_rec(name)
         off = rec['func_offset']
-        reg = get_empty_register()
+        reg = get_reg(name)
         asm.write('lw ' + get_name(*reg) + ',' + str(-off))
         if rec['label'] == 'global':
             asm.write('($v1)\n')
@@ -104,7 +104,7 @@ def get_reg(name):
         assert (name[:3] == 'var')
         rec = get_rec(name)
         off = rec['func_offset']
-        reg = get_empty_register()
+        reg = get_reg(name)
         asm.write('addi ' + get_name(*reg))
         if rec['label'] == 'global':
             asm.write(',($v1),')
@@ -119,9 +119,9 @@ def get_reg(name):
         assert (name[:3] == 'var')
         rec = get_rec(name)
         off = rec['func_offset']
-        reg = get_empty_register()
+        reg = get_reg(name)
         if rec['width'] == 0:
-            asm.write('lw ' + get_name(*reg) + ',' + str(-off + int(member)))
+            asm.write('lw ' + get_name(*reg) + ',' + str(-off - int(member)))
             if rec['label'] == 'global':
                 asm.write('($v1)\n')
             else:
@@ -132,7 +132,7 @@ def get_reg(name):
                 asm.write('($v1)\n')
             else:
                 asm.write('($fp)\n')
-            asm.write('lw ' + get_name(*reg) + ',' + member + '(' +
+            asm.write('lw ' + get_name(*reg) + ',' + str(-member) + '(' +
                       get_name(*reg) + ')\n')
         return get_name(*reg)
     elif len(name.split('[')) != 1:
@@ -143,7 +143,7 @@ def get_reg(name):
         # Load the value of index
         rec = get_rec(index)
         off = rec['func_offset']
-        regi = get_empty_register()
+        regi = get_reg(index)
         asm.write('lw ' + get_name(*regi) + ',' + str(-off))
         if rec['label'] == 'global':
             asm.write('($v1)\n')
@@ -152,7 +152,7 @@ def get_reg(name):
         rec = get_rec(name)
         off = rec['func_offset']
         if rec['width'] == 0:
-            asm.write('add ' + get_name(*regi) + ',' + get_name(*regi) + ',')
+            asm.write('sub ' + get_name(*regi) + ',' + get_name(*regi) + ',')
             if rec['label'] == 'global':
                 asm.write('$v1\n')
             else:
@@ -160,14 +160,14 @@ def get_reg(name):
             asm.write('lw ' + get_name(*regi) + ',' + str(-off) + '(' +
                       get_name(*regi) + ')\n')
         else:
-            reg = get_empty_register()
+            reg = get_reg(name)
             asm.write('lw ' + get_name(*reg) + ',' + str(-off))
             if rec['label'] == 'global':
                 asm.write('($v1)\n')
             else:
                 asm.write('($fp)\n')
             # load the value at reg + regi
-            asm.write('add ' + get_name(*reg) + ',' + get_name(*reg) + ',' +
+            asm.write('sub ' + get_name(*reg) + ',' + get_name(*reg) + ',' +
                       get_name(*regi) + '\n')
             asm.write('lw ' + get_name(*regi) + ',0(' + get_name(*reg) + ')\n')
         return get_name(*regi)
