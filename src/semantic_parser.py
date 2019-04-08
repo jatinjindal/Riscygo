@@ -1286,7 +1286,7 @@ def p_ParameterDecl(p):
             
             cur_symtab[len(cur_symtab) - 1].data[p[1]] = values(
                 type=p[2].children[0].leaf["type"],
-                width=wi,
+                width=p[2].children[0].leaf["width"],
                 offset=cur_offset[-1],
                 place=temp_name)
             p[0] = Node(
