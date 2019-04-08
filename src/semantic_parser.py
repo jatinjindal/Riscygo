@@ -2125,7 +2125,7 @@ def p_ForStmt(p):
             code += [[p[2].leaf["label"] + ".next",":"]]
             p[0].leaf["code"] = code
         else:
-            code = p[4].leaf["code"][0] + [[p[2].leaf["label"] + ":"]
+            code = p[4].leaf["code"][0] + [[p[2].leaf["label"] ,":"]
                                            ] + p[4].leaf["code"][1]
             if p[4].leaf["place"] is not None:
                 code += [[
@@ -2293,20 +2293,20 @@ def p_PrintIntStmt(p):
     '''
     PrintIntStmt : PRINTINT Expression
     '''
-    p[0]=Node("void",[Node("void",[],{"label":"printInt"}),p[2]],{"label":"printInt","code":[["printInt",p[2].leaf["place"]]]})
+    p[0]=Node("void",[Node("void",[],{"label":"printInt"}),p[2]],{"label":"printInt","code":p[2].leaf["code"]+[["printInt",p[2].leaf["place"]]]})
 
 
 def p_PrintStrStmt(p):
     '''
     PrintStrStmt : PRINTSTR Expression
     '''
-    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":[["printStr",p[2].leaf["place"]]]})
+    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":p[2].leaf["code"]+[["printStr",p[2].leaf["place"]]]})
 
 def p_ScanIntStmt(p):
     '''
     ScanIntStmt : SCANINT Expression
     '''
-    p[0]=Node("void",[Node("void",[],{"label":"ScanInt"}),p[2]],{"label":"ScanInt","code":[["ScanInt",p[2].leaf["place"]]]})
+    p[0]=Node("void",[Node("void",[],{"label":"ScanInt"}),p[2]],{"label":"ScanInt","code":p[2].leaf["code"]+[["ScanInt",p[2].leaf["place"]]]})
 
 def p_ExpressionList(p):
     '''
