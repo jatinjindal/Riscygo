@@ -91,8 +91,9 @@ def get_reg(name):
         rec = get_rec(name)
         off = rec['func_offset']
         reg = get_reg(name)
-        asm.write('lw ' + reg + ',0(' + reg + ')\n')
-        return reg
+        regt = get_name(*get_empty_register())
+        asm.write('lw ' + regt + ',0(' + reg + ')\n')
+        return regt
     elif name[0] == '&':
         # Getting an address of var
         name = name[1:]
@@ -115,17 +116,18 @@ def get_reg(name):
         rec = get_rec(name)
         off = rec['func_offset']
         if rec['width'] == 0:
-            reg = get_empty_register()
-            asm.write('lw ' + get_name(*reg) + ',' + str(-off - int(member)))
+            reg = get_name(*get_empty_register())
+            asm.write('lw ' + reg + ',' + str(-off - int(member)))
             if rec['label'] == 'global':
                 asm.write('($v1)\n')
             else:
                 asm.write('($fp)\n')
-            return get_name(*reg)
+            return reg
         else:
             reg = get_reg(name)
-            asm.write('lw ' + reg + ',' + str(-member) + '(' + reg + ')\n')
-            return reg
+            regt = get_name(*get_empty_register())
+            asm.write('lw ' + regt + ',' + str(-member) + '(' + reg + ')\n')
+            return regt
     elif len(name.split('[')) != 1:
         # Getting array member
         index = name.split('[')[1].split(']')[0]
@@ -135,24 +137,23 @@ def get_reg(name):
         regi = get_reg(index)
         rec = get_rec(name)
         off = rec['func_offset']
+        reg = get_name(*get_empty_register())
         if rec['width'] == 0:
-            asm.write('sub ' + regi + ',' + regi + ',')
+            asm.write('sub ' + reg + ',')
             if rec['label'] == 'global':
-                asm.write('$v1\n')
+                asm.write('$v1,' + regi + '\n')
             else:
-                asm.write('$fp\n')
-            asm.write('lw ' + regi + ',' + str(-off) + '(' + regi + ')\n')
+                asm.write('$fp,' + regi + '\n')
+            asm.write('lw ' + reg + ',' + str(-off) + '(' + reg + ')\n')
         else:
-            reg = get_reg(name)
             asm.write('lw ' + reg + ',' + str(-off))
             if rec['label'] == 'global':
                 asm.write('($v1)\n')
             else:
                 asm.write('($fp)\n')
-            # load the value at reg + regi
             asm.write('sub ' + reg + ',' + reg + ',' + regi + '\n')
-            asm.write('lw ' + regi + ',0(' + reg + ')\n')
-        return regi
+            asm.write('lw ' + reg + ',0(' + reg + ')\n')
+        return reg
     else:
         # A normal var
         assert (name[:3] == 'var')
