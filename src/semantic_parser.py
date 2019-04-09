@@ -14,13 +14,14 @@ elif_count = 0
 for_count = 0
 switch_count = 0
 default_count = 0
+str_count=0
 cur_symtab, cur_offset,cur_activation = [], [],[]
 func_offset = []
 array_info={}
 
 #used for 3ac
 set_of_activation={}
-global_struct_length={}
+string_map={}
 #used for 3ac
 
 case_count = 0
@@ -201,6 +202,11 @@ def generate_ifname():
     global if_count
     if_count += 1
     return "if_" + str(if_count)
+
+def generate_strname():
+    global str_count
+    str_count += 1
+    return "msg_" + str(str_count)
 
 
 def generate_forname():
@@ -2298,9 +2304,11 @@ def p_PrintIntStmt(p):
 
 def p_PrintStrStmt(p):
     '''
-    PrintStrStmt : PRINTSTR Expression
+    PrintStrStmt : PRINTSTR stringLit
     '''
-    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":p[2].leaf["code"]+[["printStr",p[2].leaf["place"]]]})
+    str_name=generate_strname()
+    string_map[str_name]=p[2].children[0].leaf['label']
+    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":[["printStr",str_name]]})
 
 def p_ScanIntStmt(p):
     '''
@@ -3075,7 +3083,7 @@ def p_stringLit(p):
     p[0] = Node("void", [
         Node(
             "void", [], {
-                "label": p[1][1:-1],
+                "label": p[1],
                 "type": [type_map['string']],
                 "width": 36
             })
@@ -3197,7 +3205,6 @@ def p_StructType(p):
     # print "-" * 40
     top = cur_symtab[len(cur_symtab) - 1]
     top.total = cur_offset[len(cur_offset) - 1]
-    global_struct_length[p[2]]=top.total
     for key in cur_symtab[-1].data:
         type1=cur_symtab[-1].data[key].type
         if len(type1)%2==0:
@@ -3505,7 +3512,6 @@ def main():
     global out_ir, out_st
     global parser
     global set_of_activation
-    global global_struct_length
 
     parser = argparse.ArgumentParser(description='A Parser for Golang')
     parser.add_argument('--ir', required=True, help='Output file for 3 Address Code')
@@ -3524,8 +3530,9 @@ def main():
     out_st.close()
     with open('activation.pickle', 'wb') as handle:
         pickle.dump(set_of_activation,handle)
-    with open('struct.pickle', 'wb') as handle:
-        pickle.dump(global_struct_length,handle)
+    with open('string_map.pickle', 'wb') as handle:
+        pickle.dump(string_map,handle)
+
     
 
 
