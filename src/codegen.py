@@ -4,7 +4,6 @@ import random
 import re
 
 set_of_activations = []
-struct_length = {}
 code = []
 current_activation = "global"
 reg_map = [[None] * 10, [None] * 8]
@@ -103,9 +102,9 @@ def get_reg(name):
         reg = get_empty_register()
         asm.write('addi ' + get_name(*reg))
         if rec['label'] == 'global':
-            asm.write(',($v1),')
+            asm.write(',$v1,')
         else:
-            asm.write(',($fp),')
+            asm.write(',$fp,')
         asm.write(str(-rec['func_offset']) + '\n')
         return get_name(*reg)
     elif len(name.split('.')) != 1:
@@ -213,11 +212,10 @@ def off_load():
             reg_map[1][x] = None
 
 
-def handle_assign(dst, src):
+def handle_assign(dst, reg):
     global asm
     # TODO: Handle floating point registers
-    reg = get_reg(src)
-        
+    reg = get_reg(reg) 
     if dst[-1] == "]":
         dst_nam = dst.split('[')[0]
         print dst
@@ -239,6 +237,11 @@ def handle_assign(dst, src):
             reg2 = get_reg(dst_nam)
             asm.write('sub ' + reg2 + ',' + reg2 + ',' + regi + '\n')
             asm.write('sw ' + reg + ',0(' + reg2 + ')\n')
+    elif dst[0] == "*":
+        dst = dst[1:]
+        assert (dst[:3] == 'var')
+        reg2 = get_reg(dst)
+        asm.write("sw " + reg + ",0(" + reg2 + ")\n")
     elif len(dst.split('.')) != 1:
         # Getting member of a struct
         member = dst.split('.')[1]
@@ -255,17 +258,11 @@ def handle_assign(dst, src):
         else:
             reg2 = get_reg(name)
             asm.write('sw ' + reg + ',' + str(-member) + '(' + reg2 + ')\n')
-            
-    elif dst[0] == "*":
-        dst = dst[1:]
-        assert (dst[:3] == 'var')
-        reg2 = get_reg(dst)
-        asm.write("sw " + reg + ",0(" + reg2 + ")\n")
     else:
         assert (dst[:3] == 'var')
         rec = get_rec(dst)
         if rec['isreg'] != -1:
-            reg2 = get_name(*rec['isreg'])
+            reg2 = rec['isreg']
         else:
             reg2 = get_empty_register(dst)
             off = rec['func_offset']
@@ -575,15 +572,12 @@ def generate_code(ins):
 
 def main():
     global set_of_activations
-    global struct_length
     global code
     global asm
     global cur_reg
 
     with open('activation.pickle', 'rb') as handle:
         set_of_activations = pickle.load(handle)
-    with open('struct.pickle', 'rb') as handle:
-        struct_length = pickle.load(handle)
     with open('code.pickle', 'rb') as handle:
         code = pickle.load(handle)
     parser = argparse.ArgumentParser(description='A Parser for Golang')
@@ -592,9 +586,6 @@ def main():
     args = parser.parse_args()
     asm = open(args.output, 'w+')
 
-    print "global_struct_length"
-    for nam in struct_length:
-        print nam, struct_length[nam]
     for nam in set_of_activations:
         print nam
         for item in set_of_activations[nam].data:
