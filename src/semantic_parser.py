@@ -1472,7 +1472,7 @@ def p_Assignments(p):
                     print "Assignment allowed only to Identifiers.Error at lineno " + str(
                         p.lineno(1))
                     exit()
-            p[0].leaf["code"]=p[3].leaf["code"]+[["malloc",p[1].children[0].leaf["place"],p[3].leaf["place"]]]
+            p[0].leaf["code"]=p[1].leaf["code"]+p[3].leaf["code"]+[["malloc",p[1].children[0].leaf["place"],p[3].leaf["place"]]]
     else:
         len1 = len(p[1].children)
         len2 = len(p[4].children)
@@ -2917,6 +2917,8 @@ def p_PrimaryExpr(p):
     elif len(p)==3:
         p[0] = Node("void", p[1].children + [p[2]], {"label": "PrimaryExp"})
         code = p[1].leaf['code'] + p[2].leaf['code']
+        # print "here"
+        # print p[2].leaf["code"]
         place = ''
         if p[2].leaf["label"] == "Selector":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
@@ -2976,6 +2978,7 @@ def p_PrimaryExpr(p):
             else:
                 p[0].children[0].leaf["width"] = p[1].children[0].leaf["width"] / type_p[1]
                 p[0].children[0].leaf["type"] = type_p[2:]
+
 
                 
                 if p[1].leaf["place"][-1]=="]":
