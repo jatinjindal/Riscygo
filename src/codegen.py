@@ -5,6 +5,7 @@ import re
 
 set_of_activations = []
 code = []
+string_map={}
 current_activation = "global"
 reg_map = [[None] * 10, [None] * 8]
 asm = None
@@ -125,7 +126,7 @@ def get_reg(name):
         else:
             reg = get_reg(name)
             regt = get_name(*get_empty_register())
-            asm.write('lw ' + regt + ',' + str(-member) + '(' + reg + ')\n')
+            asm.write('lw ' + regt + ',-' + str(member) + '(' + reg + ')\n')
             return regt
     elif len(name.split('[')) != 1:
         # Getting array member
@@ -215,11 +216,8 @@ def off_load():
 def handle_assign(dst, reg):
     global asm
     # TODO: Handle floating point registers
-    reg = get_reg(reg) 
     if dst[-1] == "]":
         dst_nam = dst.split('[')[0]
-        print dst
-        print dst_nam
         index = dst.split('[')[1].split(']')[0]
         assert (dst_nam[:3] == 'var' and index[:3] == 'var')
         regi = get_reg(index)
@@ -257,7 +255,7 @@ def handle_assign(dst, reg):
                 asm.write('($fp)\n')
         else:
             reg2 = get_reg(name)
-            asm.write('sw ' + reg + ',' + str(-member) + '(' + reg2 + ')\n')
+            asm.write('sw ' + reg + ',-' + member + '(' + reg2 + ')\n')
     else:
         assert (dst[:3] == 'var')
         rec = get_rec(dst)
@@ -265,10 +263,13 @@ def handle_assign(dst, reg):
             reg2 = rec['isreg']
         else:
             reg2 = get_empty_register(dst)
-            off = rec['func_offset']
             rec['isreg'] = reg2
         asm.write('move '+ get_name(*reg2)+','+reg+'\n')
-        
+        asm.write('sw '+reg+','+str(-rec["func_offset"]) )
+        if rec['label'] == 'global':
+            asm.write('($v1)\n')
+        else:
+            asm.write('($fp)\n')
 
 def generate_code(ins):
     global first_func
@@ -277,7 +278,8 @@ def generate_code(ins):
 
     if ins[0] == "=":
         assert (len(ins) == 3)
-        handle_assign(ins[1], ins[2])
+        reg = get_reg(ins[2])
+        handle_assign(ins[1], reg)
     elif ins[0] == "returnm":
         if len(ins) == 1:
             off_load()
@@ -313,12 +315,11 @@ def generate_code(ins):
         asm.write("jr $ra\n")
 
     elif ins[0] == "malloc":
-        reg = get_reg(ins[1])
         reg2 = get_reg(ins[2])
         asm.write("move $a0," + reg2 + "\n")
         asm.write("li $v0, 9\n")
         asm.write("syscall\n")
-        asm.write("move "+reg+",$v0\n")
+        handle_assign(ins[1],"$v0")
 
     elif len(ins) == 1 and ins[0] == "push":
         asm.write("addi $sp,$sp,-4\n")
@@ -358,15 +359,16 @@ def generate_code(ins):
         asm.write("addi $sp,$sp,4\n")
 
     elif len(ins) == 2 and ins[0] == "pop":
-        rec = get_rec(ins[1])
+        # rec = get_rec(ins[1])
         reg_emp = get_empty_register(None)
         reg_name = get_name(reg_emp[0], reg_emp[1])
         asm.write("lw " + reg_name + ",0($sp)\n")
-        asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
-        if rec["label"] == "global":
-            asm.write("($v1)\n")
-        else:
-            asm.write("($fp)\n")
+        handle_assign(ins[1],reg_name)
+        # asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        # if rec["label"] == "global":
+        #     asm.write("($v1)\n")
+        # else:
+        #     asm.write("($fp)\n")
         asm.write("addi $sp,$sp,4\n")
 
     elif len(ins) == 2 and ins[0] == "printInt":
@@ -375,14 +377,16 @@ def generate_code(ins):
         asm.write("li $v0,1\n")
         asm.write("syscall\n")
 
+    elif len(ins) == 2 and ins[0] == "printStr":
+        asm.write("la $a0" + "," + ins[1] + "\n")
+        asm.write("li $v0,4\n")
+        asm.write("syscall\n")
+
     elif len(ins) == 2 and ins[0] == "ScanInt":
-        # print "\n\n\n\n\n\n\n\n"
-        # print ins[1]
-        reg = get_reg(ins[1])
         asm.write("li $v0,5\n")
         asm.write("syscall\n")
-        asm.write("move " + reg  + ",$v0\n")
-        
+        handle_assign(ins[1],"$v0")
+
     elif len(ins) == 2 and ins[0] in set_of_activations and ins[0] == "main":
         off_load()
         asm.write("main:")
@@ -419,20 +423,36 @@ def generate_code(ins):
         off_load()
         asm.write("j " + ins[1] + "\n")
 
+    elif len(ins)==3 and ins[0]=="-":
+        reg=get_reg(ins[2])
+        reg3 = get_empty_register(None)
+        reg_name = get_name(reg3[0], reg3[1])
+        asm.write("sub "+reg_name+",$0,"+reg+"\n")
+        handle_assign(ins[1],reg_name)
+
+    elif len(ins)==3 and ins[0]=="!":
+        reg=get_reg(ins[2])
+        reg3 = get_empty_register(None)
+        reg_name = get_name(reg3[0], reg3[1])
+        asm.write("slt "+reg_name+",$0,"+reg+"\n")
+        asm.write("xori "+reg_name+","+reg_name+",1\n")
+        handle_assign(ins[1],reg_name)
+
     elif len(ins) == 4 and (ins[0] == "<" or ins[0] == "<int"):
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
         reg3 = get_empty_register(None)
         reg_name = get_name(reg3[0], reg3[1])
         asm.write("slt " + reg_name + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_name)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == ">" or ins[0] == ">int"):
         reg1 = get_reg(ins[2])
@@ -440,14 +460,15 @@ def generate_code(ins):
         reg3 = get_empty_register(None)
         reg_name = get_name(reg3[0], reg3[1])
         asm.write("slt " + reg_name + "," + reg2 + "," + reg1 + "\n")
+        handle_assign(ins[1],reg_name)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == "<=" or ins[0] == "<=int"):
         reg1 = get_reg(ins[2])
@@ -456,14 +477,15 @@ def generate_code(ins):
         reg_name = get_name(reg3[0], reg3[1])
         asm.write("slt " + reg_name + "," + reg2 + "," + reg1 + "\n")
         asm.write("xor " + reg_name + "," + reg_name + ",1" + "\n")
+        handle_assign(ins[1],reg_name)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == ">=" or ins[0] == ">=int"):
         reg1 = get_reg(ins[2])
@@ -472,14 +494,15 @@ def generate_code(ins):
         reg_name = get_name(reg3[0], reg3[1])
         asm.write("slt " + reg_name + "," + reg1 + "," + reg2 + "\n")
         asm.write("xor " + reg_name + "," + reg_name + ",1" + "\n")
+        handle_assign(ins[1],reg_name)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == "==" or ins[0] == "==int"):
 
@@ -493,14 +516,15 @@ def generate_code(ins):
         asm.write("slt " + reg_name2 + "," + reg2 + "," + reg1 + "\n")
         asm.write("or " + reg_name2 + "," + reg_name1 + "," + reg_name2 + "\n")
         asm.write("xor " + reg_name2 + "," + reg_name2 + ",1" + "\n")
+        handle_assign(ins[1],reg_name2)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name2 + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name2 + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == "!=" or ins[0] == "!=int"):
         reg1 = get_reg(ins[2])
@@ -512,52 +536,58 @@ def generate_code(ins):
         asm.write("slt " + reg_name1 + "," + reg1 + "," + reg2 + "\n")
         asm.write("slt " + reg_name2 + "," + reg2 + "," + reg1 + "\n")
         asm.write("or " + reg_name2 + "," + reg_name1 + "," + reg_name2 + "\n")
+        handle_assign(ins[1],reg_name2)
         #CALL A GENERIC FUNCTION HERE
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            asm.write("sw " + reg_name2 + "," + str(-rec["func_offset"]))
-            if rec["label"] == "global":
-                asm.write("($v1)\n")
-            else:
-                asm.write("($fp)\n")
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     asm.write("sw " + reg_name2 + "," + str(-rec["func_offset"]))
+        #     if rec["label"] == "global":
+        #         asm.write("($v1)\n")
+        #     else:
+        #         asm.write("($fp)\n")
 
     elif len(ins) == 4 and (ins[0] == "+" or ins[0] == "+int"):
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
-        asm.write("add " + reg3 + "," + reg1 + "," + reg2 + "\n")
+        reg_emp = get_name(*get_empty_register())
+        asm.write("add " + reg_emp + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_emp)
 
     elif len(ins) == 4 and (ins[0] == "-" or ins[0] == "-int"):
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
-        asm.write("sub " + reg3 + "," + reg1 + "," + reg2 + "\n")
+        reg_emp = get_name(*get_empty_register())
+        asm.write("sub " + reg_emp + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_emp)
 
     elif len(ins) == 4 and (ins[0] == "*" or ins[0] == "*int"):
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
-        asm.write("mul " + reg3 + "," + reg1 + "," + reg2 + "\n")
+        reg_emp = get_name(*get_empty_register())
+        asm.write("mul " + reg_emp + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_emp)
 
     elif len(ins) == 4 and (ins[0] == "/" or ins[0] == "/int"):
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
+        reg_emp = get_name(*get_empty_register())
         asm.write("div "+ reg1 + "," + reg2 + "\n")
-        asm.write("mflo "+reg3+"\n")
+        asm.write("mflo "+reg_emp+"\n")
+        handle_assign(ins[1],reg_emp)
 
     elif len(ins) == 4 and ins[0] == "&&":
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
-        asm.write("and " + reg3 + "," + reg1 + "," + reg2 + "\n")
-
+        reg_emp = get_name(*get_empty_register())
+        asm.write("and " + reg_emp + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_emp)
+        
     elif len(ins) == 4 and ins[0] == "||":
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
-        reg3 = get_reg(ins[1])
-        asm.write("or " + reg3 + "," + reg1 + "," + reg2 + "\n")
-
+        reg_emp = get_name(*get_empty_register())
+        asm.write("or " + reg_emp + "," + reg1 + "," + reg2 + "\n")
+        handle_assign(ins[1],reg_emp)
     # elif len(ins)==4 and (ins[0]=="/" or ins[0]=="/int"):
     #     reg1=get_reg(ins[2])
     #     reg2=get_reg(ins[3])
@@ -569,17 +599,26 @@ def generate_code(ins):
         off_load()
         asm.write("beq " + reg + ",$0," + ins[3] + "\n")
 
+    elif len(ins) == 4 and ins[0] == "ifftrue":
+        reg = get_reg(ins[1])
+        off_load()
+        asm.write("bne " + reg + ",$0," + ins[3] + "\n")
+
 
 def main():
     global set_of_activations
     global code
     global asm
     global cur_reg
+    global string_map
 
     with open('activation.pickle', 'rb') as handle:
         set_of_activations = pickle.load(handle)
     with open('code.pickle', 'rb') as handle:
         code = pickle.load(handle)
+    with open('string_map.pickle', 'rb') as handle:
+        string_map = pickle.load(handle)
+
     parser = argparse.ArgumentParser(description='A Parser for Golang')
     parser.add_argument(
         '--output', required=True, help='Output file for 3 Address Code')
@@ -617,6 +656,10 @@ def main():
             if type(code[i][j]) == str:
                 code[i][j] = code[i][j].strip()
 
+
+    asm.write(".data\n")
+    for key in string_map:
+        asm.write(key+": .asciiz "+string_map[key]+"\n")
     asm.write(".text\n")
     asm.write(".globl main\n")
     print code
