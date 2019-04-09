@@ -398,7 +398,8 @@ reserved = {
     'printInt':'PRINTINT',
     'printStr':'PRINTSTR',
     'scanInt':'SCANINT',
-    'malloc' : 'MALLOC'
+    'malloc' : 'MALLOC',
+    'null' : 'NULL'
 }
 
 types = {
@@ -833,7 +834,7 @@ def p_ConstSpec(p):
                 #3AC-code
                 type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
                 
-                if type1[0]==2 or type1[0]==3 and len(type1)%2==0:
+                if type1[0]==2 or (type1[0]==3 and len(type1)%2==0):
                     tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label,0)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                 else:
@@ -1007,7 +1008,7 @@ def p_VarSpec(p):
                 #3AC-code
                 type1=first_nontypedef(p[2].children[0].leaf["type"],cur_symtab[-1])
 
-                if type1[0]==2 or type1[0]==3 and len(type1)%2==0:
+                if type1[0]==2 or (type1[0]==3 and len(type1)%2==0):
                     tmp_name = address_generate_compilername(func_offset[-1],0,cur_activation[-1].label,0)
                     func_offset[-1]+=p[2].children[0].leaf['width']
                 else:
@@ -1440,21 +1441,38 @@ def p_Assignments(p):
     Assignment : ExpressionList AssignOp RepeatNewline ExpressionList
                | ExpressionList EQUALS RepeatNewline ExpressionList
                | ExpressionList EQUALS MallocExp
+               | ExpressionList EQUALS NULL
+
     '''
     if len(p) == 4:
-        p[0] = Node("void",
-                        [p[1], Node("void", [], {"label": p[2]}), p[3]],
-                        {"label": "Assignment"})
-        p[0].leaf["place"]=None
-        len1 = len(p[1].children)
-        if len1 !=1:
-            print "Malloc allowed on only 1 id at a time " + str(p.lineno(1))
-            exit()
-        if "marked" not in p[1].children[0].children[0].leaf:
-                print "Assignment allowed only to Identifiers.Error at lineno " + str(
-                    p.lineno(1))
+        if p[3]=='null':
+            p[0] = Node("void",
+                            [p[1], Node("void", [], {"label": p[2]}), p[3]],
+                            {"label": "Assignment"})
+            p[0].leaf["place"]=None
+            len1 = len(p[1].children)
+            if len1 !=1:
+                print "Malloc allowed on only 1 id at a time " + str(p.lineno(1))
                 exit()
-        p[0].leaf["code"]=p[3].leaf["code"]+[["malloc",p[1].children[0].leaf["place"],p[3].leaf["place"]]]
+            if "marked" not in p[1].children[0].children[0].leaf:
+                    print "Assignment allowed only to Identifiers.Error at lineno " + str(
+                        p.lineno(1))
+                    exit()
+            p[0].leaf["code"]=[["=",p[1].children[0].leaf["place"],0]]
+        else:
+            p[0] = Node("void",
+                            [p[1], Node("void", [], {"label": p[2]}), p[3]],
+                            {"label": "Assignment"})
+            p[0].leaf["place"]=None
+            len1 = len(p[1].children)
+            if len1 !=1:
+                print "Malloc allowed on only 1 id at a time " + str(p.lineno(1))
+                exit()
+            if "marked" not in p[1].children[0].children[0].leaf:
+                    print "Assignment allowed only to Identifiers.Error at lineno " + str(
+                        p.lineno(1))
+                    exit()
+            p[0].leaf["code"]=p[3].leaf["code"]+[["malloc",p[1].children[0].leaf["place"],p[3].leaf["place"]]]
     else:
         len1 = len(p[1].children)
         len2 = len(p[4].children)
@@ -2487,67 +2505,84 @@ def p_Term2(p):
         p[0].leaf['place'] = t2
 
     else:
-        p[4].leaf["label"] = "Expression"
-        p[1].leaf["label"] = "Expression"
-        type1 = first_nontypedef(p[4].leaf['type'], cur_symtab[-1])
-        type2 = first_nontypedef(p[1].leaf['type'], cur_symtab[-1])
-        if len(type1) != 1 or len(type2) != 1:
-            print("[line:" + str(p.lineno(1)) + "]" +
-                  'Arithmetic operation not allowed for given type')
-            exit()
-        p[0] = Node("void", [
-            Node("void", p[1].children + p[4].children,
-                 {"label": p[2].children[0].leaf["label"]})
-        ], {"label": "Term2"})
-        f1 = 0
-        f2 =0
+        if p[4]=='null':
 
-        if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
-                                                   and type2[0] <= 12):
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
-            p[2] = p[2].children[0].leaf["label"] +  "int"
-
-        elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
-                                                     and type2[0] <= 14):
-            if type1[0] >= 3 and type1[0] <= 12:
-                f1 = 1
-            if type2[0] >= 3 and type2[0] <= 12:
-                f2 = 1
-            p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
-            p[2] = p[2].children[0].leaf["label"] +  "float"
-
-        elif type1[0] == 16 and type2[0] == 16:
-            p[0].leaf["type"], p[0].leaf["width"] = [
-                16
-            ], p[1].leaf["width"] + p[4].leaf["width"]
-            p[2] = p[2].children[0].leaf["label"] +  "string"
+            p[1].leaf["label"] = "Expression"
+            type2 = first_nontypedef(p[1].leaf['type'], cur_symtab[-1])
+            p[0] = Node("void", [
+                Node("void", p[1].children ,
+                     {"label": p[2].children[0].leaf["label"]})
+            ], {"label": "Term2"})
+            p[0].leaf["type"] = [type_map['bool']]
+            p[0].leaf["width"] = 4
+            p[0].leaf["code"]=p[1].leaf["code"]
+            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+            func_offset[-1]+=4
+            p[0].leaf['code'].append([p[2].children[0].leaf["label"], t2, p[1].leaf['place'], 0])
+            p[0].leaf['place'] = t2
 
         else:
-            print("[line:" + str(p.lineno(1)) + "]" +
-                  'Arithmetic operation not allowed for given type')
-            exit()
+            p[4].leaf["label"] = "Expression"
+            p[1].leaf["label"] = "Expression"
+            type1 = first_nontypedef(p[4].leaf['type'], cur_symtab[-1])
+            type2 = first_nontypedef(p[1].leaf['type'], cur_symtab[-1])
+            if len(type1) != 1 or len(type2) != 1:
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Arithmetic operation not allowed for given type')
+                exit()
+            p[0] = Node("void", [
+                Node("void", p[1].children + p[4].children,
+                     {"label": p[2].children[0].leaf["label"]})
+            ], {"label": "Term2"})
+            f1 = 0
+            f2 =0
 
-        p[0].leaf["type"] = [type_map['bool']]
-        p[0].leaf["width"] = 4
+            if (type1[0] >= 3 and type1[0] <= 12) and (type2[0] >= 3
+                                                       and type2[0] <= 12):
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['int']], 4
+                p[2] = p[2].children[0].leaf["label"] +  "int"
+
+            elif (type1[0] >= 3 and type1[0] <= 14) and (type2[0] >= 3
+                                                         and type2[0] <= 14):
+                if type1[0] >= 3 and type1[0] <= 12:
+                    f1 = 1
+                if type2[0] >= 3 and type2[0] <= 12:
+                    f2 = 1
+                p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
+                p[2] = p[2].children[0].leaf["label"] +  "float"
+
+            elif type1[0] == 16 and type2[0] == 16:
+                p[0].leaf["type"], p[0].leaf["width"] = [
+                    16
+                ], p[1].leaf["width"] + p[4].leaf["width"]
+                p[2] = p[2].children[0].leaf["label"] +  "string"
+
+            else:
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Arithmetic operation not allowed for given type')
+                exit()
+
+            p[0].leaf["type"] = [type_map['bool']]
+            p[0].leaf["width"] = 4
 
 
-        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        if f1 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
+            p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+            if f1 == 1:
+                t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
+                func_offset[-1]+=4
+                p[0].leaf['code'].append(['cast-float', t1, p[4].leaf['place']])
+                p[4].leaf['place'] = t1
+            if f2 == 1:
+                t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
+                func_offset[-1]+=4
+                p[0].leaf['code'].append(['cast-float', t1, p[1].leaf['place']])
+                p[1].leaf['place'] = t1
+
+            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
             func_offset[-1]+=4
-            p[0].leaf['code'].append(['cast-float', t1, p[4].leaf['place']])
-            p[4].leaf['place'] = t1
-        if f2 == 1:
-            t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
-            func_offset[-1]+=4
-            p[0].leaf['code'].append(['cast-float', t1, p[1].leaf['place']])
-            p[1].leaf['place'] = t1
 
-        t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
-        func_offset[-1]+=4
-
-        p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
-        p[0].leaf['place'] = t2
+            p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
+            p[0].leaf['place'] = t2
 
 
 
@@ -2570,6 +2605,7 @@ def p_Term3(p):
           | Term3 MINUS RepeatNewline Term4
           | Term3 OR RepeatNewline Term4
           | Term3 XOR RepeatNewline Term4
+          | NULL
           | Term4
     '''
     if len(p) == 2:
@@ -3474,6 +3510,7 @@ def p_MallocExp(p):
     MallocExp : MALLOC LPAREN Expression RPAREN
     '''
     p[0]=p[3]
+
 
 
 def p_empty(p):
