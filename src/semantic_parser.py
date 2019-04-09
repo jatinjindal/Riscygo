@@ -2770,7 +2770,15 @@ def p_UnaryExp(p):
                     {"label": "BasicLit"})
         type1 = first_nontypedef(p[3].children[0].leaf["type"], cur_symtab[-1])
 
-        if p[1].children[0].leaf["label"] in ["+", "-"]:
+        if p[1].children[0].leaf["label"] in ["+"]:
+            if len(type1) != 1 or not (type1[0] >= 3 and type1[0] <= 14):
+                print("[line:" + str(p.lineno(1)) + "]" +
+                      'Unary Operation +,- not allowed on given type')
+                exit()
+            p[0].leaf['code']=[]
+            p[0].leaf['place']=p[3].leaf['place']
+
+        elif p[1].children[0].leaf["label"] in ["-"]:
             if len(type1) != 1 or not (type1[0] >= 3 and type1[0] <= 14):
                 print("[line:" + str(p.lineno(1)) + "]" +
                       'Unary Operation +,- not allowed on given type')
