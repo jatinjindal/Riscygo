@@ -325,27 +325,31 @@ def generate_code(ins):
         asm.write("addi $sp,$sp,-4\n")
 
     elif len(ins) == 2 and ins[0] == "push":
-        if ins[1][:3] == "var":
-            rec = get_rec(ins[1])
-            if rec["width"] == 0:
-                reg_emp = get_empty_register()
-                reg2 = get_name(reg_emp[0], reg_emp[1])
-                asm.write("li " + reg2 + "," + str(rec["func_offset"]) + "\n")
-                if rec["label"] == "global":
-                    asm.write("sub " + reg2 + ",$v1," + reg2 + "\n")
-                else:
-                    asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
-                asm.write("addi $sp,$sp,-4\n")
-                asm.write("sw " + reg2 + ",0($sp)\n")
+        reg=get_reg(ins[1])
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw " + reg + ",0($sp)\n")
+        
+        # if ins[1][:3] == "var":
+        #     rec = get_rec(ins[1])
+        #     if rec["width"] == 0:
+        #         reg_emp = get_empty_register()
+        #         reg2 = get_name(reg_emp[0], reg_emp[1])
+        #         asm.write("li " + reg2 + "," + str(rec["func_offset"]) + "\n")
+        #         if rec["label"] == "global":
+        #             asm.write("sub " + reg2 + ",$v1," + reg2 + "\n")
+        #         else:
+        #             asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
+        #         asm.write("addi $sp,$sp,-4\n")
+        #         asm.write("sw " + reg2 + ",0($sp)\n")
 
-            else:
-                reg = get_reg(ins[1])
-                asm.write("addi $sp,$sp,-4\n")
-                asm.write("sw " + reg + ",0($sp)\n")
-        else:
-            reg = get_reg(ins[1])
-            asm.write("addi $sp,$sp,-4\n")
-            asm.write("sw " + reg + ",0($sp)\n")
+        #     else:
+        #         reg = get_reg(ins[1])
+        #         asm.write("addi $sp,$sp,-4\n")
+        #         asm.write("sw " + reg + ",0($sp)\n")
+        # else:
+        #     reg = get_reg(ins[1])
+        #     asm.write("addi $sp,$sp,-4\n")
+        #     asm.write("sw " + reg + ",0($sp)\n")
 
     elif len(ins) == 3 and ins[0] == "call":
         asm.write("addi $sp,$sp,-4\n")
