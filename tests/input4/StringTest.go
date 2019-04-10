@@ -31,7 +31,8 @@ func main() {
 	scanInt num1
 	scanInt num2
 	printStr "The chose numbers are\n"
-	printStr num(num1)+" and "+num(num2)+"\n"
+	concat= num(num1)+" and "+num(num2)+"\n"
+	printStr concat
 
 
 }
