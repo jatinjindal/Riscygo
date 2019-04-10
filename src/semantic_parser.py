@@ -343,7 +343,7 @@ type_width = {
     'float32': 4,
     'float64': 8,
     'uintptr': 8,
-    'string': 0,
+    'string': 4,
     'error': 0,
 }
 
@@ -398,6 +398,7 @@ reserved = {
     'printInt':'PRINTINT',
     'printStr':'PRINTSTR',
     'scanInt':'SCANINT',
+    'scanStr' : 'SCANSTR',
     'malloc' : 'MALLOC',
     'null' : 'NULL'
 }
@@ -792,6 +793,7 @@ def p_Statement(p):
               | DeferStmt
               | PrintStmt
               | ScanIntStmt
+              | ScanStrStmt
     '''
     p[1].leaf["label"] = "Statement"
     p[0] = p[1]
@@ -1440,8 +1442,8 @@ def p_Assignments(p):
     '''
     Assignment : ExpressionList AssignOp RepeatNewline ExpressionList
                | ExpressionList EQUALS RepeatNewline ExpressionList
-               | ExpressionList EQUALS MallocExp
-               | ExpressionList EQUALS NULL
+               | ExpressionList EQUALS MallocExp 
+               | ExpressionList EQUALS NULL           
 
     '''
     if len(p) == 4:
@@ -2113,7 +2115,8 @@ def p_DefaultMarker(p):
     '''
     parent = find_parentfunc(cur_symtab[len(cur_symtab) - 1])
     tnew = symtab(cur_symtab[len(cur_symtab) - 1])
-    name = "default_" + str(if_count)
+    # name = "default_" + str(if_count)
+    name = generate_defaultname()
     parent.children[name] = tnew
     parent.data[name] = values()
     tnew.label_map.insert(0, p[-2].leaf["label"])
@@ -2319,20 +2322,29 @@ def p_PrintIntStmt(p):
     '''
     p[0]=Node("void",[Node("void",[],{"label":"printInt"}),p[2]],{"label":"printInt","code":p[2].leaf["code"]+[["printInt",p[2].leaf["place"]]]})
 
-
 def p_PrintStrStmt(p):
     '''
-    PrintStrStmt : PRINTSTR stringLit
+    PrintStrStmt : PRINTSTR Expression
     '''
-    str_name=generate_strname()
-    string_map[str_name]=p[2].children[0].leaf['label']
-    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":[["printStr",str_name]]})
+    type1=first_nontypedef(p[2].leaf['type'],cur_symtab[-1])
+    if len(type1)!=1 and type1[0]!=16:
+        print("[line:" + str(p.lineno(1)) + "]" +'Arithmetic operation not allowed for given type')
+        exit()
+    p[0]=Node("void",[Node("void",[],{"label":"printStr"}),p[2]],{"label":"printStr","code":p[2].leaf['code']+[["printStr",p[2].leaf['place']]]})
 
 def p_ScanIntStmt(p):
     '''
     ScanIntStmt : SCANINT Expression
     '''
     p[0]=Node("void",[Node("void",[],{"label":"ScanInt"}),p[2]],{"label":"ScanInt","code":p[2].leaf["code"]+[["ScanInt",p[2].leaf["place"]]]})
+
+def p_ScanstrStmt(p):
+    '''
+    ScanStrStmt : SCANSTR Expression
+    '''
+    name=generate_strname()
+    string_map[name]=255
+    p[0]=Node("void",[Node("void",[],{"label":"ScanInt"}),p[2]],{"label":"ScanInt","code":p[2].leaf["code"]+[["ScanStr",p[2].leaf["place"],name]]})
 
 def p_ExpressionList(p):
     '''
@@ -2669,7 +2681,7 @@ def p_Term3(p):
                 p[0].leaf["type"], p[0].leaf["width"] = [type_map['float32']], 4
                 p[2] = '+float'
             elif type1[0] == 16 and type2[0] == 16:
-                p[0].leaf["type"], p[0].leaf["width"] = [16], p[1].leaf["width"] + p[4].leaf["width"]
+                p[0].leaf["type"], p[0].leaf["width"] = [16], 4
                 p[2] = '+string'
             else:
                 print("[line:" + str(p.lineno(1)) + "]" +
@@ -2700,6 +2712,11 @@ def p_Term3(p):
 
         t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
         func_offset[-1]+=4
+        if p[2]=='+string':
+            name=generate_strname()
+            string_map[name]=255
+            p[0].leaf['code'].append(['=string',t2,name])
+    
         p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t2
 
@@ -3081,15 +3098,27 @@ def p_BasicLit(p):
              | stringLit
     '''
 
-    p[1].leaf["label"] = "BasicLit"
-    p[0] = p[1]
+    
     #string not handles
-    isf=is_float(p[0].children[0].leaf["type"],cur_symtab[-1])
-    p[0].leaf['place'] =  address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
-    func_offset[-1]+=4
-    p[0].leaf['code'] = [
-        ['=', p[0].leaf['place'], p[0].children[0].leaf['label']],
-    ]
+    if p[1].leaf['label']=='String':
+        p[1].leaf['place'] =  address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+        func_offset[-1]+=4
+        name=generate_strname()
+        p[1].leaf["label"] = "BasicLit"
+        p[0] = p[1]
+        string_map[name]=p[0].children[0].leaf['label']
+        p[0].leaf['code'] = [
+            ['=string', p[0].leaf['place'], name],
+        ]
+    else:    
+        p[1].leaf["label"] = "BasicLit"
+        p[0] = p[1]
+        isf=is_float(p[0].children[0].leaf["type"],cur_symtab[-1])
+        p[0].leaf['place'] =  address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
+        func_offset[-1]+=4
+        p[0].leaf['code'] = [
+            ['=', p[0].leaf['place'], p[0].children[0].leaf['label']],
+        ]
 
 
 # int_lit = decimal_lit | octal_lit | hex_lit .
@@ -3132,7 +3161,7 @@ def p_stringLit(p):
             "void", [], {
                 "label": p[1],
                 "type": [type_map['string']],
-                "width": 36
+                "width": 4
             })
     ], {"label": "String"})
 
