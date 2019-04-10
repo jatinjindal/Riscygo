@@ -125,97 +125,97 @@ def get_reg(name):
         asm.write("li.s " + reg_name + "," + str(name) + "\n" )
         return reg_name
 
-    rec = get_rec(name)
-    if rec["isf"] == 1:
+    if name[0] == '*':
+        # Deferencing a var
+        name = name[1:]
         assert (name[:3] == 'var')
-        if rec['isreg'] != -1:
-            cur_reg.append(rec['isreg'])
-            return rec['isreg']
+        off = rec['func_offset']
+        reg = get_reg(name)
+        regt = get_name(*get_empty_register())
+        asm.write('lw ' + regt + ',0(' + reg + ')\n')
+        return regt
+    elif name[0] == '&':
+        # Getting an address of var
+        name = name[1:]
+        assert (name[:3] == 'var')
+        rec = get_rec(name)
+        off = rec['func_offset']
+        reg = get_empty_register()
+        asm.write('addi ' + get_name(*reg))
+        if rec['label'] == 'global':
+            asm.write(',$v1,')
         else:
-            reg = get_empty_register(name)
-            off = rec['func_offset']
-            rec['isreg'] = reg
-            asm.write('l.s ' + reg + ',' + str(-off))
+            asm.write(',$fp,')
+        asm.write(str(-rec['func_offset']) + '\n')
+        return get_name(*reg)
+    elif len(name.split('.')) != 1:
+        # Getting member of a struct
+        member = name.split('.')[1]
+        name = name.split('.')[0]
+        assert (name[:3] == 'var')
+        rec = get_rec(name)
+        off = rec['func_offset']
+        if rec['width'] == 0:
+            reg = get_name(*get_empty_register())
+            asm.write('lw ' + reg + ',' + str(-off - int(member)))
             if rec['label'] == 'global':
                 asm.write('($v1)\n')
             else:
                 asm.write('($fp)\n')
             return reg
-    else:
-        if name[0] == '*':
-            # Deferencing a var
-            name = name[1:]
-            assert (name[:3] == 'var')
-            off = rec['func_offset']
+        else:
             reg = get_reg(name)
             regt = get_name(*get_empty_register())
-            asm.write('lw ' + regt + ',0(' + reg + ')\n')
+            asm.write('lw ' + regt + ',-' + str(member) + '(' + reg + ')\n')
             return regt
-        elif name[0] == '&':
-            # Getting an address of var
-            name = name[1:]
-            assert (name[:3] == 'var')
-            rec = get_rec(name)
-            off = rec['func_offset']
-            reg = get_empty_register()
-            asm.write('addi ' + get_name(*reg))
+    elif len(name.split('[')) != 1:
+        # Getting array member
+        index = name.split('[')[1].split(']')[0]
+        name = name.split('[')[0]
+        assert (name[:3] == 'var' and index[:3] == 'var')
+        # Load the value of index
+
+        regi = get_reg(index)
+        rec = get_rec(name)
+        off = rec['func_offset']
+        reg = get_name(*get_empty_register())
+        if rec['width'] == 0:
+            asm.write('sub ' + reg + ',')
             if rec['label'] == 'global':
-                asm.write(',$v1,')
+                asm.write('$v1,' + regi + '\n')
             else:
-                asm.write(',$fp,')
-            asm.write(str(-rec['func_offset']) + '\n')
-            return get_name(*reg)
-        elif len(name.split('.')) != 1:
-            # Getting member of a struct
-            member = name.split('.')[1]
-            name = name.split('.')[0]
+                asm.write('$fp,' + regi + '\n')
+            asm.write('lw ' + reg + ',' + str(-off) + '(' + reg + ')\n')
+        else:
+            asm.write('lw ' + reg + ',' + str(-off))
+            if rec['label'] == 'global':
+                asm.write('($v1)\n')
+            else:
+                asm.write('($fp)\n')
+            asm.write('sub ' + reg + ',' + reg + ',' + regi + '\n')
+            asm.write('lw ' + reg + ',0(' + reg + ')\n')
+        return reg
+    else:
+        # A normal var
+        assert (name[:3] == 'var')
+        rec = get_rec(name)
+        
+        if rec["isf"] == 1:
             assert (name[:3] == 'var')
-            rec = get_rec(name)
-            off = rec['func_offset']
-            if rec['width'] == 0:
-                reg = get_name(*get_empty_register())
-                asm.write('lw ' + reg + ',' + str(-off - int(member)))
+            if rec['isreg'] != -1:
+                cur_reg.append(rec['isreg'])
+                return rec['isreg']
+            else:
+                reg = get_empty_register(name)
+                off = rec['func_offset']
+                rec['isreg'] = reg
+                asm.write('l.s ' + reg + ',' + str(-off))
                 if rec['label'] == 'global':
                     asm.write('($v1)\n')
                 else:
                     asm.write('($fp)\n')
                 return reg
-            else:
-                reg = get_reg(name)
-                regt = get_name(*get_empty_register())
-                asm.write('lw ' + regt + ',-' + str(member) + '(' + reg + ')\n')
-                return regt
-        elif len(name.split('[')) != 1:
-            # Getting array member
-            index = name.split('[')[1].split(']')[0]
-            name = name.split('[')[0]
-            assert (name[:3] == 'var' and index[:3] == 'var')
-            # Load the value of index
-
-            regi = get_reg(index)
-            rec = get_rec(name)
-            off = rec['func_offset']
-            reg = get_name(*get_empty_register())
-            if rec['width'] == 0:
-                asm.write('sub ' + reg + ',')
-                if rec['label'] == 'global':
-                    asm.write('$v1,' + regi + '\n')
-                else:
-                    asm.write('$fp,' + regi + '\n')
-                asm.write('lw ' + reg + ',' + str(-off) + '(' + reg + ')\n')
-            else:
-                asm.write('lw ' + reg + ',' + str(-off))
-                if rec['label'] == 'global':
-                    asm.write('($v1)\n')
-                else:
-                    asm.write('($fp)\n')
-                asm.write('sub ' + reg + ',' + reg + ',' + regi + '\n')
-                asm.write('lw ' + reg + ',0(' + reg + ')\n')
-            return reg
         else:
-            # A normal var
-            assert (name[:3] == 'var')
-            rec = get_rec(name)
             if rec['isreg'] != -1:
                 cur_reg.append(rec['isreg'])
                 return get_name(*rec['isreg'])
