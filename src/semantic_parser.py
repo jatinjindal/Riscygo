@@ -718,16 +718,20 @@ def p_RepeatTopLevelDecl(p):
     '''
     if len(p) == 2:
         if p[1]:
-            p[0] = Node("void", [p[1]], {"label": "Declarations"})
-            p[0].leaf["label"] = p[1].leaf["label"]
-            if p[0].leaf["label"] == "Declaration":
-                p[0].leaf["code1"] = p[1].leaf["code"]
-                p[0].leaf["code2"] = []
+            if p[1]!='definition':
+                p[0] = Node("void", [p[1]], {"label": "Declarations"})
+                p[0].leaf["label"] = p[1].leaf["label"]
+                if p[0].leaf["label"] == "Declaration":
+                    p[0].leaf["code1"] = p[1].leaf["code"]
+                    p[0].leaf["code2"] = []
+                else:
+                    p[0].leaf["code2"] = p[1].leaf["code"]
+                    p[0].leaf["code1"] = []
+                    
+                p[0].leaf["place"] = p[1].leaf["place"]
             else:
-                p[0].leaf["code2"] = p[1].leaf["code"]
-                p[0].leaf["code1"] = []
-                
-            p[0].leaf["place"] = p[1].leaf["place"]
+                p[0]=p[1]
+
         else:
             p[0] = Node("void", [], {
                 "label": "empty",
@@ -737,10 +741,11 @@ def p_RepeatTopLevelDecl(p):
             })
     if len(p) == 4:
         p[3].children = [p[1]] + p[3].children
-        if p[1].leaf["label"] == "Declaration":
-            p[3].leaf["code1"] = p[1].leaf["code"] + p[3].leaf["code1"]
-        else:
-            p[3].leaf["code2"] = p[1].leaf["code"] + p[3].leaf["code2"]
+        if p[1]!='definition':
+            if p[1].leaf["label"] == "Declaration":
+                p[3].leaf["code1"] = p[1].leaf["code"] + p[3].leaf["code1"]
+            else:
+                p[3].leaf["code2"] = p[1].leaf["code"] + p[3].leaf["code2"]
 
         p[3].leaf["place"] = None
         p[0] = p[3]
@@ -1039,6 +1044,7 @@ def p_VarSpec(p):
                 print "[line:" + str(
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
                         child.leaf["label"]) + " at line " + str(p.lineno(1))
+                exit()
     else:
         p[0] = Node("void",
                     [p[1], Node("void", [], {"label": "="}), p[5]],
@@ -1107,6 +1113,7 @@ def p_VarSpec(p):
                     p.lineno(1)) + "]" + "Redeclaration of " + str(
                         p[1].children[ind].leaf["label"]) + " at line " + str(
                             p.lineno(1))
+                exit()
 
 
 # FunctionDecl = "func" FunctionName Signature [ FunctionBody ] .
@@ -1115,6 +1122,7 @@ def p_VarSpec(p):
 def p_FunctionDecl(p):
     '''
     FunctionDecl : FunctionMarker  FunctionBody
+                 | FunctionMarker
     '''
     
     # print "-" * 40
@@ -1125,30 +1133,37 @@ def p_FunctionDecl(p):
     # print "symtab children:", cur_symtab[len(cur_symtab) - 1].children
     # print "total offset:", cur_offset[len(cur_offset) - 1]
     # print "-" * 40
-    top = cur_symtab[-1]
-    top.total = cur_offset[-1]
-    dump_st()
-    cur_activation[-1].total=func_offset[-1]-4
-    set_of_activation[cur_symtab[-1].label_map[0]]=cur_activation[-1]
-    cur_symtab.pop()
-    cur_offset.pop()
-    func_offset.pop()
-    
-   
-    cur_activation.pop()
-    #t = lookup(cur_symtab[-1], p[1].children[1].leaf["label"])
-    p[2].leaf["label"] = "FunctionBody"
-    p[1].children = p[1].children + [p[2]]
-    p[1].leaf["label"] = "Function"
-    p[0] = p[1]
-    p[0].leaf["label"] = "FunctionDecl"
-    p[0].leaf["code"] = [[p[1].children[1].leaf["label"] , ":"]]
-    p[0].leaf["code"] += p[2].leaf["code"]
-    if p[1].children[1].leaf["label"] == "main":
-        p[0].leaf["code"] += [["returnm"]]
+    if len(p)==3:
+        top = cur_symtab[-1]
+        top.total = cur_offset[-1]
+        dump_st()
+        cur_activation[-1].total=func_offset[-1]-4
+        set_of_activation[cur_symtab[-1].label_map[0]]=cur_activation[-1]
+        cur_symtab.pop()
+        cur_offset.pop()
+        func_offset.pop()
+        
+       
+        cur_activation.pop()
+        #t = lookup(cur_symtab[-1], p[1].children[1].leaf["label"])
+        p[2].leaf["label"] = "FunctionBody"
+        p[1].children = p[1].children + [p[2]]
+        p[1].leaf["label"] = "Function"
+        p[0] = p[1]
+        p[0].leaf["label"] = "FunctionDecl"
+        p[0].leaf["code"] = [[p[1].children[1].leaf["label"] , ":"]]
+        p[0].leaf["code"] += p[2].leaf["code"]
+        if p[1].children[1].leaf["label"] == "main":
+            p[0].leaf["code"] += [["returnm"]]
+        else:
+            p[0].leaf["code"] += [["return"]]
+        p[0].leaf["place"] = None
     else:
-        p[0].leaf["code"] += [["return"]]
-    p[0].leaf["place"] = None
+        cur_symtab.pop()
+        cur_offset.pop()
+        cur_activation.pop()
+        func_offset.pop()
+        p[0]='definition'
 
 
 def p_FunctionMarker(p):
@@ -1171,8 +1186,24 @@ def p_FunctionMarker(p):
         cur_offset[-2] += p[0].children[3].leaf["width"]
         cur_symtab[-1].label_map.insert(0, p[3].leaf["label"])
     else:
-        print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
-            p[3].leaf["label"]) + " at line " + str(p.lineno(1))
+        if t.args is None:    
+            print "[line:" + str(p.lineno(1)) + "]" + "Redeclaration of " + str(
+                p[3].leaf["label"]) + " at line " + str(p.lineno(1))
+            exit()
+        else:
+            if check_type(t.type,p[0].children[3].leaf["type"],cur_symtab[-2])==True and len(t.args)==len(p[0].children[2].leaf["type"]):
+                for x in range(0,len(t.args)):
+                    if check_type(t.args[x],p[0].children[2].leaf["type"][x],cur_symtab[-2])==0:
+                        print "[line:" + str(p.lineno(1)) + "]" + "Function does not align with definition at line " + str(p.lineno(1))
+                        exit()
+            else:
+                print "[line:" + str(p.lineno(1)) + "]" + "Function does not align with definition at line " + str(p.lineno(1))
+                exit()
+            cur_symtab[-1].label_map.insert(0, p[3].leaf["label"])
+
+
+
+
 
 
 def p_FunctionName(p):
