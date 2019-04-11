@@ -129,7 +129,6 @@ def get_reg(name):
         # Deferencing a var
         name = name[1:]
         assert (name[:3] == 'var')
-        off = rec['func_offset']
         reg = get_reg(name)
         regt = get_name(*get_empty_register())
         asm.write('lw ' + regt + ',0(' + reg + ')\n')
