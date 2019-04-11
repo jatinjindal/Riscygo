@@ -22,16 +22,17 @@ func main() {
 	var str string
 	var concat string=""
 	var num1 int
-	var num2 int
 
 	printStr "Enter Your Name:\n"
 	scanStr str
 	printStr "Welcome "+str+"!\n"	
-	printStr "Enter any two numbers:\n"
+	printStr "Write any number:\n"
 	scanInt num1
-	scanInt num2
-	printStr "The chose numbers are\n"
-	concat= num(num1)+" and "+num(num2)+"\n"
+
+	for ;num1>0;{
+		concat=num(num1%10)+" "+concat
+		num1=num1/10
+	}
 	printStr concat
 
 

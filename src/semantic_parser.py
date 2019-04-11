@@ -2755,10 +2755,10 @@ def p_Term3(p):
 
         t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
         func_offset[-1]+=4
-        if p[2]=='+string':
-            name=generate_strname()
-            string_map[name]=255
-            p[0].leaf['code'].append(['=string',t2,name])
+        # if p[2]=='+string':
+        #     name=generate_strname()
+        #     string_map[name]=255
+        #     p[0].leaf['code'].append(['=string',t2,name])
     
         p[0].leaf['code'].append([p[2], t2, p[1].leaf['place'], p[4].leaf['place']])
         p[0].leaf['place'] = t2

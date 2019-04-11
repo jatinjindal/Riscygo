@@ -362,8 +362,17 @@ def generate_code(ins):
 
     elif ins[0]=='=string':
         reg_name=get_name(*get_empty_register())
-        asm.write('la '+reg_name+','+ins[2]+'\n')
-        handle_assign(ins[1],reg_name)
+        asm.write("li $a0,255\n")
+        asm.write("li $v0, 9\n")
+        asm.write("syscall\n")
+        asm.write('la $a0,'+ins[2]+'\n')
+        asm.write('move $a1,$v0\n')
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw $ra,0($sp)\n")
+        asm.write("jal copy\n")
+        asm.write("lw $ra,0($sp)\n")
+        asm.write("addi $sp,$sp,4\n")
+        handle_assign(ins[1],"$v0")
 
     elif ins[0] == "returnm":
         if len(ins) == 1:
@@ -525,8 +534,7 @@ def generate_code(ins):
         asm.write("sw $fp,0($sp)\n")
         asm.write("move $fp,$sp\n")
         current_activation = ins[0]
-        asm.write("addi $sp,$sp," +
-                  str(-set_of_activations[current_activation].total) + "\n")
+        asm.write("addi $sp,$sp," +str(-set_of_activations[current_activation].total) + "\n")
 
     elif len(ins) == 2 and ins[1] == ":":
         off_load()
@@ -736,14 +744,27 @@ def generate_code(ins):
     elif len(ins) == 4 and ins[0] == "+string":
         reg1=get_reg(ins[2])
         reg2=get_reg(ins[3])
-        reg3=get_reg(ins[1])
+        # reg3=get_reg(ins[1])
+        asm.write("li $a0,255\n")
+        asm.write("li $v0, 9\n")
+        asm.write("syscall\n")
+        asm.write("move $a2,$v0\n")
+
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw $v0,0($sp)\n")
+
         asm.write("move $a0,"+reg1+"\n")
         asm.write("move $a1,"+reg2+"\n")
-        asm.write("move $a2,"+reg3+"\n")
-        off_load()
-        asm.write("move $s0,$ra\n")
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw $ra,0($sp)\n")
         asm.write("jal strcpy\n")
-        asm.write("move $ra,$s0\n")
+        asm.write("lw $ra,0($sp)\n")
+        asm.write("addi $sp,$sp,4\n")
+
+        asm.write("lw $v0,0($sp)\n")
+        asm.write("addi $sp,$sp,4\n")
+
+        handle_assign(ins[1],"$v0")
 
 
     elif len(ins) == 4 and (ins[0] == "-" or ins[0] == "-int"):
@@ -810,11 +831,7 @@ def generate_code(ins):
         reg_emp = get_name(*get_empty_register())
         asm.write("or " + reg_emp + "," + reg1 + "," + reg2 + "\n")
         handle_assign(ins[1],reg_emp)
-    # elif len(ins)==4 and (ins[0]=="/" or ins[0]=="/int"):
-    #     reg1=get_reg(ins[2])
-    #     reg2=get_reg(ins[3])
-    #     reg3=get_reg(ins[1])
-    #     asm.write("sub " + reg3 + "," +reg1+","+reg2+"\n")
+
 
     elif len(ins) == 4 and ins[0] == "iffalse":
         reg = get_reg(ins[1])
@@ -892,24 +909,24 @@ def main():
     for ins in code:
         generate_code(ins)
         cur_reg = []
-    str_cpy_code="""
+    str_cpy_code1="""
 #String copy code
 strcpy:
-li $t8 10 #store newline in $t8
+li $v0 10 #store newline in $t8
 sCopyFirst:
-    lb   $t0 0($a0)
-    beq  $t0 $zero sCopySecond 
-    beq  $t0 $t8 sCopySecond   
-    sb   $t0 0($a2)
+    lb   $a3 0($a0)
+    beq  $a3 $zero sCopySecond 
+    beq  $a3 $t8 sCopySecond   
+    sb   $a3 0($a2)
     addi $a0 $a0 1
     addi $a2 $a2 1
     b sCopyFirst
 
 sCopySecond:
-    lb   $t0 0($a1)
-    beq  $t0 $zero sDone 
-    beq  $t0 $t8 sDone   
-    sb   $t0 0($a2)
+    lb   $a3 0($a1)
+    beq  $a3 $zero sDone 
+    beq  $a3 $v0 sDone   
+    sb   $a3 0($a2)
     addi $a1 $a1 1
     addi $a2 $a2 1
     b sCopySecond
@@ -918,7 +935,17 @@ sDone:
     sb $zero 0($a2) 
     jr $ra
         """
-    asm.write(str_cpy_code)
+    str_cpy_code2="""
+    copy:
+  lb $a2,($a0)        
+  sb $a2,($a1)        
+  addiu $a0,$a0,1
+  addiu $a1,$a1,1
+  bne $a2,$zero,copy
+  jr $ra  
+    """
+    asm.write(str_cpy_code1)
+    asm.write(str_cpy_code2)
 
 
 if __name__ == '__main__':
