@@ -319,6 +319,7 @@ def handle_assign(dst, reg):
             assert (dst[:3] == 'var')
             reg2 = get_reg(dst)
             asm.write("sw " + reg + ",0(" + reg2 + ")\n")
+            off_load()
         elif len(dst.split('.')) != 1:
             # Getting member of a struct
             member = dst.split('.')[1]
