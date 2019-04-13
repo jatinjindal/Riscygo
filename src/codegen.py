@@ -432,6 +432,43 @@ def generate_code(ins):
         asm.write("syscall\n")
         handle_assign(ins[1], "$v0")
 
+    elif ins[0] == "openFile":
+        filename = get_reg(ins[2])
+        asm.write("move $a0," + filename + "\n")
+        flags = get_reg(ins[3])
+        asm.write("move $a1," + flags + "\n")
+        mode = get_reg(ins[4])
+        asm.write("move $a2," + mode + "\n")
+        asm.write("li $v0, 13\n")
+        asm.write("syscall\n")
+        handle_assign(ins[1], "$v0")
+
+    elif ins[0] == "readFile":
+        fd = get_reg(ins[1])
+        asm.write("move $a0," + fd + "\n")
+        addr = get_reg(ins[2])
+        asm.write("move $a1," + addr + "\n")
+        length = get_reg(ins[3])
+        asm.write("move $a2," + length + "\n")
+        asm.write("li $v0, 14\n")
+        asm.write("syscall\n")
+
+    elif ins[0] == "writeFile":
+        fd = get_reg(ins[1])
+        asm.write("move $a0," + fd + "\n")
+        addr = get_reg(ins[2])
+        asm.write("move $a1," + addr + "\n")
+        length = get_reg(ins[3])
+        asm.write("move $a2," + length + "\n")
+        asm.write("li $v0, 15\n")
+        asm.write("syscall\n")
+
+    elif ins[0] == "closeFile":
+        fd = get_reg(ins[1])
+        asm.write("move $a0," + fd + "\n")
+        asm.write("li $v0, 16\n")
+        asm.write("syscall\n")
+
     elif len(ins) == 1 and ins[0] == "push":
         asm.write("addi $sp,$sp,-4\n")
 
@@ -520,6 +557,7 @@ def generate_code(ins):
         handle_assign(ins[1], "$v0")
 
     elif len(ins) == 3 and ins[0] == "ScanStr":
+        print(ins)
         asm.write("la $a0," + ins[2] + "\n")
         handle_assign(ins[1], "$a0")
         asm.write("li $a1,255\n")
