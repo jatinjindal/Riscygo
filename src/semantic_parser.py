@@ -406,6 +406,8 @@ reserved = {
     'readFile' : 'READFILE',
     'writeFile' : 'WRITEFILE',
     'closeFile' : 'CLOSEFILE',
+    'sin' : 'SIN',
+    'cos' : 'COS',
     'null' : 'NULL'
 }
 
@@ -1480,6 +1482,8 @@ def p_Assignments(p):
     Assignment : ExpressionList AssignOp RepeatNewline ExpressionList
                | ExpressionList EQUALS RepeatNewline ExpressionList
                | ExpressionList EQUALS MallocExp
+               | ExpressionList EQUALS SinExp
+               | ExpressionList EQUALS CosExp
                | ExpressionList EQUALS OpenFileExp
                | ReadFileExp
                | WriteFileExp
@@ -1527,6 +1531,30 @@ def p_Assignments(p):
                 exit()
             p[0].leaf['code'] = p[1].leaf['code'] + p[3].leaf['code']
             p[0].leaf['code'].append(['openFile', p[1].children[0].leaf['place'], p[3].children[0].leaf['place'], p[3].children[1].leaf['place'], p[3].children[2].leaf['place']])
+        elif p[3].leaf['label'] == 'sin':
+            p[0] = Node('void', [p[1], Node('void', [], {'label': p[2]}), p[3]], {'label': 'Assignment'})
+            p[0].leaf['place'] = None
+            len1 = len(p[1].children)
+            if len1 != 1:
+                print "sin allowed on only 1 id at a time " + str(p.lineno(1))
+                exit()
+            if "marked" not in p[1].children[0].children[0].leaf:
+                print "Assignment allowed only to Identifiers. Error at lineno " + str(p.lineno(1))
+                exit()
+            p[0].leaf['code'] = p[1].leaf['code'] + p[3].leaf['code']
+            p[0].leaf['code'].append(['sin', p[1].children[0].leaf['place'], p[3].children[0].leaf['place']])
+        elif p[3].leaf['label'] == 'cos':
+            p[0] = Node('void', [p[1], Node('void', [], {'label': p[2]}), p[3]], {'label': 'Assignment'})
+            p[0].leaf['place'] = None
+            len1 = len(p[1].children)
+            if len1 != 1:
+                print "cos allowed on only 1 id at a time " + str(p.lineno(1))
+                exit()
+            if "marked" not in p[1].children[0].children[0].leaf:
+                print "Assignment allowed only to Identifiers. Error at lineno " + str(p.lineno(1))
+                exit()
+            p[0].leaf['code'] = p[1].leaf['code'] + p[3].leaf['code']
+            p[0].leaf['code'].append(['cos', p[1].children[0].leaf['place'], p[3].children[0].leaf['place']])
     elif len(p) == 2:
         if p[1].leaf['label'] == 'readFile':
             p[0] = Node('void', [p[1]], {'label': 'Assignment'})
@@ -3656,6 +3684,22 @@ def p_CloseFileExp(p):
     CloseFileExp : CLOSEFILE LPAREN Expression RPAREN
     '''
     p[0] = Node('void', [p[3]], {'label': 'closeFile'})
+    p[0].leaf['code'] = p[3].leaf['code']
+
+
+def p_SinExp(p):
+    '''
+    SinExp : SIN LPAREN Expression RPAREN
+    '''
+    p[0] = Node('void', [p[3]], {'label': 'sin'})
+    p[0].leaf['code'] = p[3].leaf['code']
+
+
+def p_CosExp(p):
+    '''
+    CosExp : COS LPAREN Expression RPAREN
+    '''
+    p[0] = Node('void', [p[3]], {'label': 'cos'})
     p[0].leaf['code'] = p[3].leaf['code']
 
 

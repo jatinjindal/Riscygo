@@ -28,6 +28,8 @@ asm = None
 cur_reg = []
 
 label_count = 0
+f_strcpy1, f_strcpy2 = False, False
+f_sin, f_cos = False, False
 
 
 def generate_label():
@@ -371,6 +373,8 @@ def generate_code(ins):
     global first_func
     global set_of_activations
     global current_activation
+    global f_strcpy2, f_strcpy1
+    global f_sin, f_cos
 
     if ins[0] == "=":
         assert (len(ins) == 3)
@@ -378,6 +382,7 @@ def generate_code(ins):
         handle_assign(ins[1], reg)
 
     elif ins[0] == '=string':
+        f_strcpy2 = True
         reg_name = get_name(*get_empty_register())
         asm.write("li $a0,255\n")
         asm.write("li $v0, 9\n")
@@ -468,6 +473,28 @@ def generate_code(ins):
         asm.write("move $a0," + fd + "\n")
         asm.write("li $v0, 16\n")
         asm.write("syscall\n")
+
+    elif ins[0] == "sin":
+        f_sin = True
+        arg = get_reg(ins[2])
+        asm.write("mov.s $f0," + arg + "\n")
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw $ra,0($sp)\n")
+        asm.write("jal sincode\n")
+        asm.write("lw $ra,0($sp)\n")
+        asm.write("addi $sp,$sp,4\n")
+        handle_assign(ins[1], "$f5")
+
+    elif ins[0] == "cos":
+        f_cos = True
+        arg = get_reg(ins[2])
+        asm.write("mov.s $f0," + arg + "\n")
+        asm.write("addi $sp,$sp,-4\n")
+        asm.write("sw $ra,0($sp)\n")
+        asm.write("jal coscode\n")
+        asm.write("lw $ra,0($sp)\n")
+        asm.write("addi $sp,$sp,4\n")
+        handle_assign(ins[1], "$f5")
 
     elif len(ins) == 1 and ins[0] == "push":
         asm.write("addi $sp,$sp,-4\n")
@@ -798,6 +825,7 @@ def generate_code(ins):
         handle_assign(ins[1], reg_emp)
 
     elif len(ins) == 4 and ins[0] == "+string":
+        f_strcpy1 = True
         reg1 = get_reg(ins[2])
         reg2 = get_reg(ins[3])
         # reg3=get_reg(ins[1])
@@ -962,43 +990,105 @@ def main():
     for ins in code:
         generate_code(ins)
         cur_reg = []
+
     str_cpy_code1 = """
-#String copy code
-strcpy:
-li $v0 10 #store newline in $t8
-sCopyFirst:
-    lb   $a3 0($a0)
-    beq  $a3 $zero sCopySecond
-    beq  $a3 $t8 sCopySecond
-    sb   $a3 0($a2)
-    addi $a0 $a0 1
-    addi $a2 $a2 1
-    b sCopyFirst
+    # String copy code
+    strcpy:
+    li $v0, 10 #store newline in $t8
+    sCopyFirst:
+        lb   $a3, 0($a0)
+        beq  $a3, $zero, sCopySecond
+        beq  $a3, $t8, sCopySecond
+        sb   $a3, 0($a2)
+        addi $a0, $a0, 1
+        addi $a2, $a2, 1
+        b sCopyFirst
 
-sCopySecond:
-    lb   $a3 0($a1)
-    beq  $a3 $zero sDone
-    beq  $a3 $v0 sDone
-    sb   $a3 0($a2)
-    addi $a1 $a1 1
-    addi $a2 $a2 1
-    b sCopySecond
+    sCopySecond:
+        lb   $a3, 0($a1)
+        beq  $a3, $zero, sDone
+        beq  $a3, $v0, sDone
+        sb   $a3, 0($a2)
+        addi $a1, $a1, 1
+        addi $a2, $a2, 1
+        b sCopySecond
 
-sDone:
-    sb $zero 0($a2)
-    jr $ra
-        """
+    sDone:
+        sb $zero, 0($a2)
+        jr $ra
+    """
+
     str_cpy_code2 = """
     copy:
-  lb $a2,($a0)
-  sb $a2,($a1)
-  addiu $a0,$a0,1
-  addiu $a1,$a1,1
-  bne $a2,$zero,copy
-  jr $ra
+      lb $a2,($a0)
+      sb $a2,($a1)
+      addiu $a0,$a0,1
+      addiu $a1,$a1,1
+      bne $a2,$zero,copy
+      jr $ra
     """
-    asm.write(str_cpy_code1)
-    asm.write(str_cpy_code2)
+
+    sin_code = """
+    sincode:
+    li $a0, 3
+    li.s $f11, 1.0e-7
+    # Assume the number is in $f0
+    mul.s $f3, $f0, $f0
+    mov.s $f5, $f0
+    sin_for:
+        abs.s $f1, $f0
+        c.lt.s $f1, $f11
+        bc1t sin_endfor
+        subu $a1, $a0, 1
+        mul $a1, $a1, $a0
+        mtc1 $a1, $f7
+        cvt.s.w $f7, $f7
+        div.s $f7, $f3, $f7
+        neg.s $f7, $f7
+        mul.s $f0, $f0, $f7
+        add.s $f5, $f5, $f0
+        addu $a0, $a0, 2
+        b sin_for
+    sin_endfor:
+        # Answer is in $f5
+        jr $ra
+    """
+
+    cos_code = """
+    coscode:
+    li $a0, 2
+    li.s $f11, 1.0e-7
+    # Assume the number is in $f0
+    mul.s $f3, $f0, $f0
+    li.s $f5, 1.0
+    li.s $f0, 1.0
+    cos_for:
+        abs.s $f1, $f0
+        c.lt.s $f1, $f11
+        bc1t cos_endfor
+        subu $a1, $a0, 1
+        mul $a1, $a1, $a0
+        mtc1 $a1, $f7
+        cvt.s.w $f7, $f7
+        div.s $f7, $f3, $f7
+        neg.s $f7, $f7
+        mul.s $f0, $f0, $f7
+        add.s $f5, $f5, $f0
+        addu $a0, $a0, 2
+        b cos_for
+    cos_endfor:
+        # Answer is in $f5
+        jr $ra
+    """
+
+    if f_strcpy1:
+        asm.write(str_cpy_code1)
+    if f_strcpy2:
+        asm.write(str_cpy_code2)
+    if f_sin:
+        asm.write(sin_code)
+    if f_cos:
+        asm.write(cos_code)
 
 
 if __name__ == '__main__':
