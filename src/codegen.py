@@ -63,9 +63,10 @@ def get_empty_register(set_name=None):
     # asm.write("empty_reg\n")
     if set_name == "float" or (get_rec(set_name) != None and
                                ((get_rec(set_name))["isf"]) == 1):
+        # print "enter"
         for x in reg_map_float:
             if (reg_map_float[x] == None
-                    or reg_map_float == "float") and x not in cur_reg:
+                    or reg_map_float[x] == "float") and x not in cur_reg:
                 reg_map_float[x] = set_name
                 cur_reg.append(x)
                 return x
@@ -89,6 +90,8 @@ def get_empty_register(set_name=None):
         while reg_f in cur_reg:
             reg_f = random.choice(list(reg_map_float.keys()))
         record = get_rec(reg_map_float[reg_f])
+        # print reg_map_float[reg_f]
+        # print record
         record["isreg"] = -1
         if record["label"] == "global":
             asm.write("s.s " + reg_f + "," + str(-record["func_offset"]) +
@@ -288,11 +291,20 @@ def off_load():
             #               str(-record["func_offset"]) + "($fp)\n")
             reg_map[1][x] = None
 
+    for x in reg_map_float:
+        if reg_map_float[x] != None and reg_map_float[x]!="float":
+            # print reg_map_float[x]
+            record = get_rec(reg_map_float[x])
+            record["isreg"] = -1
+            reg_map_float[x] = None
+
 
 def handle_assign(dst, reg):
     global asm
     # TODO: Handle floating point registers
     rec_dst = get_rec(dst)
+    # print "handle_assign"
+    # print reg
     if reg[1] == "f":
         assert (dst[:3] == 'var')
         rec = get_rec(dst)
@@ -375,7 +387,8 @@ def generate_code(ins):
     global current_activation
     global f_strcpy2, f_strcpy1
     global f_sin, f_cos
-
+    # print ins
+        
     if ins[0] == "=":
         assert (len(ins) == 3)
         reg = get_reg(ins[2])
@@ -422,7 +435,10 @@ def generate_code(ins):
         if len(ins) == 2:
             reg = get_reg(ins[1])
             ret_off = set_of_activations[current_activation].ret_value_addr
-            asm.write("sw " + reg + "," + str(-ret_off) + "($fp)\n")
+            if reg[1] == "f":
+                asm.write("s.s " + reg + "," + str(-ret_off) + "($fp)\n")
+            else:
+                asm.write("sw " + reg + "," + str(-ret_off) + "($fp)\n")
         off_load()
         asm.write("addi $sp,$sp," +
                   str(set_of_activations[current_activation].total) + "\n")
@@ -502,7 +518,10 @@ def generate_code(ins):
     elif len(ins) == 2 and ins[0] == "push":
         reg = get_reg(ins[1])
         asm.write("addi $sp,$sp,-4\n")
-        asm.write("sw " + reg + ",0($sp)\n")
+        if reg[1] == "f":
+            asm.write("s.s " + reg + ",0($sp)\n")
+        else:
+            asm.write("sw " + reg + ",0($sp)\n")
 
         # if ins[1][:3] == "var":
         #     rec = get_rec(ins[1])
@@ -538,10 +557,18 @@ def generate_code(ins):
         asm.write("addi $sp,$sp,4\n")
 
     elif len(ins) == 2 and ins[0] == "pop":
-        # rec = get_rec(ins[1])
-        reg_emp = get_empty_register(None)
-        reg_name = get_name(reg_emp[0], reg_emp[1])
-        asm.write("lw " + reg_name + ",0($sp)\n")
+        # print ins[1]
+        rec = get_rec(ins[1])
+        # print rec
+        if rec !=None and rec["isf"]==1:
+            # print "check float"
+            reg_name = get_empty_register("float")
+            asm.write("l.s " + reg_name + ",0($sp)\n")
+        else:
+            # print "check int"
+            reg_emp = get_empty_register(None)
+            reg_name = get_name(reg_emp[0], reg_emp[1])
+            asm.write("lw " + reg_name + ",0($sp)\n")
         handle_assign(ins[1], reg_name)
         # asm.write("sw " + reg_name + "," + str(-rec["func_offset"]))
         # if rec["label"] == "global":
@@ -584,7 +611,7 @@ def generate_code(ins):
         handle_assign(ins[1], "$v0")
 
     elif len(ins) == 3 and ins[0] == "ScanStr":
-        print(ins)
+        # print(ins)
         asm.write("la $a0," + ins[2] + "\n")
         handle_assign(ins[1], "$a0")
         asm.write("li $a1,255\n")
@@ -629,10 +656,16 @@ def generate_code(ins):
 
     elif len(ins) == 3 and ins[0] == "-":
         reg = get_reg(ins[2])
-        reg3 = get_empty_register(None)
-        reg_name = get_name(reg3[0], reg3[1])
-        asm.write("sub " + reg_name + ",$0," + reg + "\n")
-        handle_assign(ins[1], reg_name)
+        record = get_rec(ins[1])
+        if record["isf"]==1:
+            reg3 = get_empty_register("float")
+            asm.write("neg.s " + reg3 + ","+ reg + "\n")
+            handle_assign(ins[1], reg3)
+        else:
+            reg3 = get_empty_register(None)
+            reg_name = get_name(reg3[0], reg3[1])
+            asm.write("sub " + reg_name + ",$0," + reg + "\n")
+            handle_assign(ins[1], reg_name)
 
     elif len(ins) == 3 and ins[0] == "!":
         reg = get_reg(ins[2])
