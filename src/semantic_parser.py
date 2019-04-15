@@ -14,6 +14,7 @@ elif_count = 0
 for_count = 0
 switch_count = 0
 default_count = 0
+lab_count=0
 str_count=0
 cur_symtab, cur_offset,cur_activation = [], [],[]
 func_offset = []
@@ -207,6 +208,11 @@ def generate_strname():
     global str_count
     str_count += 1
     return "msg_" + str(str_count)
+
+def generate_label():
+    global lab_count
+    lab_count += 1
+    return "lab_" + str(lab_count)
 
 
 
@@ -2512,12 +2518,26 @@ def p_Expression(p):
         p[0].leaf["type"] = [type_map['bool']]
         p[0].leaf["width"] = 4
         # IR Gen
+        # t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+        # func_offset[-1]+=4
+        # p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        # p[0].leaf['code'].append(
+        #     [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        # p[0].leaf['place'] = t1
         t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
-        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append(
-            [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
-        p[0].leaf['place'] = t1
+
+        p[0].leaf['code']=p[1].leaf['code']
+        label1=generate_label()
+        label2=generate_label()
+        p[0].leaf['code'].append(['iftrue',p[1].leaf['place'],'goto',label1])
+        p[0].leaf['code']+=p[4].leaf['code']
+        p[0].leaf['code'].append(['=', t1,p[4].leaf['place']])
+        p[0].leaf['code'].append(['goto',label2])
+        p[0].leaf['code'].append([label1,':'])
+        p[0].leaf['code'].append(['=',t1,1])
+        p[0].leaf['code'].append([label2,':'])
+        p[0].leaf['place']=t1
 
 
 def p_Term1(p):
@@ -2550,12 +2570,28 @@ def p_Term1(p):
         p[0].leaf["width"] = 4
 
         # IR Gen
+        # t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+        # func_offset[-1]+=4
+        # p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
+        # p[0].leaf['code'].append(
+        #     [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
+        # p[0].leaf['place'] = t1
+
         t1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
         func_offset[-1]+=4
-        p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
-        p[0].leaf['code'].append(
-            [p[2], t1, p[1].leaf['place'], p[4].leaf['place']])
-        p[0].leaf['place'] = t1
+
+        p[0].leaf['code']=p[1].leaf['code']
+        label1=generate_label()
+        label2=generate_label()
+        p[0].leaf['code'].append(['iffalse',p[1].leaf['place'],'goto',label1])
+        p[0].leaf['code']+=p[4].leaf['code']
+        p[0].leaf['code'].append(['=', t1,p[4].leaf['place']])
+        p[0].leaf['code'].append(['goto',label2])
+        p[0].leaf['code'].append([label1,':'])
+        p[0].leaf['code'].append(['=',t1,0])
+        p[0].leaf['code'].append([label2,':'])
+        p[0].leaf['place']=t1
+
 
 
 def p_Term2(p):
