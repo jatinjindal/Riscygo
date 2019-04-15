@@ -132,3 +132,7 @@ tests/cfg1
 **/*.out
 **/parsetab.py
 **/*.dot
+**/*.pickle
+**/*.s
+src/symtab.txt
+src/ir.txt
