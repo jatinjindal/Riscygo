@@ -85,7 +85,7 @@ def get_empty_register(set_name=None):
                 return (1, x)
 
     rec = get_rec(set_name)
-    if rec["isf"] == 1:
+    if rec != None and rec["isf"] == 1:
         reg_f = random.choice(list(reg_map_float.keys()))
         while reg_f in cur_reg:
             reg_f = random.choice(list(reg_map_float.keys()))
@@ -388,7 +388,7 @@ def generate_code(ins):
     global f_strcpy2, f_strcpy1
     global f_sin, f_cos
     # print ins
-        
+
     if ins[0] == "=":
         assert (len(ins) == 3)
         reg = get_reg(ins[2])
@@ -979,15 +979,15 @@ def main():
     args = parser.parse_args()
     asm = open(args.output, 'w+')
 
-    for nam in set_of_activations:
-        print nam
-        for item in set_of_activations[nam].data:
-            print item, set_of_activations[nam].data[item][
-                "func_offset"], set_of_activations[nam].data[item][
-                    "label"], set_of_activations[nam].data[item]["width"]
-        print set_of_activations[nam].total
-        print set_of_activations[nam].ret_value_addr
-    print "\n"
+    # for nam in set_of_activations:
+    #     print nam
+    #     for item in set_of_activations[nam].data:
+    #         print item, set_of_activations[nam].data[item][
+    #             "func_offset"], set_of_activations[nam].data[item][
+    #                 "label"], set_of_activations[nam].data[item]["width"]
+    #     print set_of_activations[nam].total
+    #     print set_of_activations[nam].ret_value_addr
+    # print "\n"
     global_decl = []
     leng = 0
     for decl in code:
@@ -1018,7 +1018,7 @@ def main():
             asm.write(key + ': .space 255\n')
     asm.write(".text\n")
     asm.write(".globl main\n")
-    print code
+    # print code
 
     for ins in code:
         generate_code(ins)
