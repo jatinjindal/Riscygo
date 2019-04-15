@@ -187,7 +187,7 @@ def address_generate_compilername(offset1=None,width=None,label=None,isf=0,isreg
     global addr_compiler_count
     addr_compiler_count += 1
     name = "var_" + str(addr_compiler_count)
-    cur_activation[-1].data[name]={"width":width,"label":label,"func_offset":offset1,"isf":0,"isreg":isreg}
+    cur_activation[-1].data[name]={"width":width,"label":label,"func_offset":offset1,"isf":isf,"isreg":isreg}
     return name
 
 
@@ -2884,13 +2884,13 @@ def p_Term4(p):
         p[0].leaf['code'] = p[1].leaf['code'] + p[4].leaf['code']
         isf=0
         if f1 == 1:
-            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t2, p[4].leaf['place']])
             p[4].leaf['place'] = t2
             isf=1
         if f2 == 1:
-            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label)
+            t2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,1)
             func_offset[-1]+=4
             p[0].leaf['code'].append(['cast-float', t2, p[1].leaf['place']])
             p[1].leaf['place'] = t2
@@ -3163,6 +3163,8 @@ def p_PrimaryExpr(p):
             # IR Gen
             isf=is_float(type2,cur_symtab[-1])
             v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,isf)
+            # print v1
+            # print isf 
             func_offset[-1]+=4
             code.append(['push'])
             for i in range(len(type1)):
