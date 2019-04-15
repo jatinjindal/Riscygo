@@ -55,6 +55,7 @@ func main() {
     qsort(0, 99)
     for i =0; i < 100; i++ {
         printInt A[i]
+		printStr "\n"
     }
 
 }

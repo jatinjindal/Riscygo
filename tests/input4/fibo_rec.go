@@ -10,9 +10,8 @@ func fibo(a int) int {
 		return 1
 	}
 	return fibo(a-1)  + fibo(a - 2)
-	
 }
 
 func main() {
-	printInt fibo(32)
+	printInt fibo(10)
 }
