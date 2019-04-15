@@ -197,11 +197,12 @@ def get_reg(name):
         name = name.split('[')[0]
         assert (name[:3] == 'var' and index[:3] == 'var')
         # Load the value of index
-
         regi = get_reg(index)
         rec = get_rec(name)
         off = rec['func_offset']
         reg = get_name(*get_empty_register())
+        print rec["width"]
+        print "enter"
         if rec['width'] == 0:
             asm.write('sub ' + reg + ',')
             if rec['label'] == 'global':
@@ -516,34 +517,43 @@ def generate_code(ins):
         asm.write("addi $sp,$sp,-4\n")
 
     elif len(ins) == 2 and ins[0] == "push":
-        reg = get_reg(ins[1])
-        asm.write("addi $sp,$sp,-4\n")
-        if reg[1] == "f":
-            asm.write("s.s " + reg + ",0($sp)\n")
-        else:
-            asm.write("sw " + reg + ",0($sp)\n")
-
-        # if ins[1][:3] == "var":
-        #     rec = get_rec(ins[1])
-        #     if rec["width"] == 0:
-        #         reg_emp = get_empty_register()
-        #         reg2 = get_name(reg_emp[0], reg_emp[1])
-        #         asm.write("li " + reg2 + "," + str(rec["func_offset"]) + "\n")
-        #         if rec["label"] == "global":
-        #             asm.write("sub " + reg2 + ",$v1," + reg2 + "\n")
-        #         else:
-        #             asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
-        #         asm.write("addi $sp,$sp,-4\n")
-        #         asm.write("sw " + reg2 + ",0($sp)\n")
-
-        #     else:
-        #         reg = get_reg(ins[1])
-        #         asm.write("addi $sp,$sp,-4\n")
-        #         asm.write("sw " + reg + ",0($sp)\n")
+        # reg = get_reg(ins[1])
+        # asm.write("addi $sp,$sp,-4\n")
+        # if reg[1] == "f":
+        #     asm.write("s.s " + reg + ",0($sp)\n")
         # else:
-        #     reg = get_reg(ins[1])
-        #     asm.write("addi $sp,$sp,-4\n")
         #     asm.write("sw " + reg + ",0($sp)\n")
+
+
+        if ins[1][-1] == "]" or ins[1][0]=="*" or len(ins[1].split('.')) != 1:
+            reg = get_reg(ins[1])
+            asm.write("addi $sp,$sp,-4\n")
+            if reg[1] == "f":
+                asm.write("s.s " + reg + ",0($sp)\n")
+            else:
+                asm.write("sw " + reg + ",0($sp)\n")
+
+        elif ins[1][:3] == "var":
+            rec = get_rec(ins[1])
+            if rec["width"] == 0:
+                reg_emp = get_empty_register()
+                reg2 = get_name(reg_emp[0], reg_emp[1])
+                asm.write("li " + reg2 + "," + str(rec["func_offset"]) + "\n")
+                if rec["label"] == "global":
+                    asm.write("sub " + reg2 + ",$v1," + reg2 + "\n")
+                else:
+                    asm.write("sub " + reg2 + ",$fp," + reg2 + "\n")
+                asm.write("addi $sp,$sp,-4\n")
+                asm.write("sw " + reg2 + ",0($sp)\n")
+
+            else:
+                reg = get_reg(ins[1])
+                asm.write("addi $sp,$sp,-4\n")
+                if reg[1] == "f":
+                    asm.write("s.s " + reg + ",0($sp)\n")
+                else:
+                    asm.write("sw " + reg + ",0($sp)\n")
+
 
     elif len(ins) == 3 and ins[0] == "call":
         asm.write("addi $sp,$sp,-4\n")
