@@ -201,8 +201,8 @@ def get_reg(name):
         rec = get_rec(name)
         off = rec['func_offset']
         reg = get_name(*get_empty_register())
-        print rec["width"]
-        print "enter"
+        # print rec["width"]
+        # print "enter"
         if rec['width'] == 0:
             asm.write('sub ' + reg + ',')
             if rec['label'] == 'global':
