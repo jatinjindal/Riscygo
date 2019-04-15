@@ -11,7 +11,7 @@ func b_search(ar [10]int, key int, start int, end int) int {
 		if ar[mid] > key {
 			return b_search(ar, key, start, mid - 1)
 		}
-		return b_search(ar, key, mid, end)
+		return b_search(ar, key, mid + 1, end)
 	}
 	return -1
 }

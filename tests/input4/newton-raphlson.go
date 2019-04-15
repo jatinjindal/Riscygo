@@ -1,13 +1,13 @@
 package main
 
-var DELTA float32 = 0.0000001
+var DELTA float32 = 0.0001
 var INITIAL_Z float32 = 100.0
 
 func step(x float32, z float32) float32 {
 	return z - (z * z - x) / (2 * z)
 }
 
-func abs(x float32) float32 {
+func kabs(x float32) float32 {
 	if x > 0 {
 		return x
 	} else {
@@ -19,7 +19,7 @@ func Sqrt(x float32) float32 {
 	var z float32 = INITIAL_Z
 	var zz float32
 
-	for zz = step(x, z); abs(zz-z) > DELTA; {
+	for zz = step(x, z); kabs(zz-z) > DELTA; {
 		z = zz
 		zz = step(x, z)
 	}
