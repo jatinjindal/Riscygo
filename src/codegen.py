@@ -85,7 +85,7 @@ def get_empty_register(set_name=None):
                 return (1, x)
 
     rec = get_rec(set_name)
-    if rec != None and rec["isf"] == 1:
+    if (rec != None and rec["isf"] == 1) or set_name == "float":
         reg_f = random.choice(list(reg_map_float.keys()))
         while reg_f in cur_reg:
             reg_f = random.choice(list(reg_map_float.keys()))
@@ -101,7 +101,8 @@ def get_empty_register(set_name=None):
                       "($fp)\n")
 
         reg_map_float[reg_f] = set_name
-        rec["isreg"] = reg_f
+        if rec!=None:
+            rec["isreg"] = reg_f
         cur_reg.append(reg_f)
         return reg_f
 
