@@ -1614,8 +1614,8 @@ def p_Assignments(p):
                         print("[line:" + str(p.lineno(1)) + "]" +
                               'Not possible to assign float to int')
                         exit()
-                    elif not ((type1[0] >= 3 and type1[0] <= 14) and
-                              (type2[0] >= 3 and type2[0] <= 14)):
+                    elif not (((type1[0] >= 3 and type1[0] <= 14)or type1[0]==1) and
+                              ((type2[0] >= 3 and type2[0] <= 14)or type2[0]==1)):
                         print("[line:" + str(p.lineno(1)) + "]" +
                               'Arithmetic operation not allowed for given type')
                         exit()
