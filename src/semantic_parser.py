@@ -1769,7 +1769,7 @@ def p_Assignments(p):
 
 def p_ShortVarDecl(p):
     '''
-    ShortVarDecl : ID AUTOASIGN RepeatNewline BasicLit
+    ShortVarDecl : ID AUTOASIGN RepeatNewline Expression
     '''
     p[0] = Node("void", [
         Node("void", [], {"label": p[1]}),
@@ -3150,7 +3150,6 @@ def p_PrimaryExpr(p):
                 p[0].children[0].leaf["type"] = type_p[2:]
 
 
-
                 if p[1].leaf["place"][-1]=="]":
                     v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
@@ -3176,7 +3175,16 @@ def p_PrimaryExpr(p):
                     code.append(['=', v1, p[0].children[0].leaf['width']])
                     code.append(["*",v2,v4,v1])
                     place=v3+"["+v2+"]"
-
+                elif p[1].leaf['place'][0]=='*':
+                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1]+=4
+                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1]+=4
+                    v4 = p[2].leaf['place']
+                    code.append(['=', v1, p[0].children[0].leaf['width']])
+                    code.append(["*",v2,v4,v1])
+                    place=p[1].leaf["place"][1:]+"["+v2+"]"
+                    
                 else:
                     v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
