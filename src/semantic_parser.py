@@ -3020,7 +3020,7 @@ def p_UnaryExp(p):
                 p[0].leaf["code"]+=[["=",v1,p[3].leaf["place"]]]
                 p[0].leaf["place"]="*"+v1
 
-            elif p[3].leaf["place"][-1]=="]":
+            elif p[3].leaf["place"][-1]=="]" or len(p[3].leaf["place"].split("."))!=1:
                 v1 = address_generate_compilername(func_offset[-1],p[0].children[0].leaf["width"],cur_activation[-1].label,0)
                 func_offset[-1]+=p[0].children[0].leaf["width"]
                 p[0].leaf["code"]+=[["=",v1,p[3].leaf["place"]]]
