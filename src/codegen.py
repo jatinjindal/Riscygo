@@ -160,17 +160,63 @@ def get_reg(name):
     elif name[0] == '&':
         # Getting an address of var
         name = name[1:]
-        assert (name[:3] == 'var')
-        rec = get_rec(name)
-        off = rec['func_offset']
-        reg = get_empty_register()
-        asm.write('addi ' + get_name(*reg))
-        if rec['label'] == 'global':
-            asm.write(',$v1,')
+        if (len(name.split('[')) != 1):
+            index = name.split('[')[1].split(']')[0]
+            name = name.split('[')[0]
+            assert (name[:3] == 'var' and index[:3] == 'var')
+            # Load the value of index
+            regi = get_reg(index)
+            rec = get_rec(name)
+            off = rec['func_offset']
+            reg = get_name(*get_empty_register())
+            if rec['width'] == 0:
+                asm.write('sub ' + reg + ',')
+                if rec['label'] == 'global':
+                    asm.write('$v1,' + regi + '\n')
+                else:
+                    asm.write('$fp,' + regi + '\n')
+                asm.write('addi ' + reg + ',' + reg  + ','+ str(-off)  + '\n')
+            else:
+                asm.write('lw ' + reg + ',' + str(-off))
+                if rec['label'] == 'global':
+                    asm.write('($v1)\n')
+                else:
+                    asm.write('($fp)\n')
+                asm.write('sub ' + reg + ',' + reg + ',' + regi + '\n')
+            return reg
+        elif len(name.split('.')) != 1:
+            # Getting member of a struct
+            member = name.split('.')[1]
+            name = name.split('.')[0]
+            assert (name[:3] == 'var')
+            rec = get_rec(name)
+            off = rec['func_offset']
+            if rec['width'] == 0:
+                reg = get_name(*get_empty_register())
+                asm.write('addi ' + reg + ',' )
+                if rec['label'] == 'global':
+                    asm.write('$v1')
+                else:
+                    asm.write('$fp')
+                asm.write(","+str(-off - int(member))+'\n')
+                return reg
+            else:
+                reg = get_reg(name)
+                regt = get_name(*get_empty_register())
+                asm.write('addi ' + regt + ','+  reg  + ','+str(-int(member)) + '\n')
+                return regt
         else:
-            asm.write(',$fp,')
-        asm.write(str(-rec['func_offset']) + '\n')
-        return get_name(*reg)
+            assert (name[:3] == 'var')
+            rec = get_rec(name)
+            off = rec['func_offset']
+            reg = get_empty_register()
+            asm.write('addi ' + get_name(*reg))
+            if rec['label'] == 'global':
+                asm.write(',$v1,')
+            else:
+                asm.write(',$fp,')
+            asm.write(str(-rec['func_offset']) + '\n')
+            return get_name(*reg)
     elif len(name.split('.')) != 1:
         # Getting member of a struct
         member = name.split('.')[1]

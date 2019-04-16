@@ -160,6 +160,8 @@ def check_eq(name1, name2, table):
 
 
 def check_type(type1, type2, table):
+    if len(type1)==0 and len(type2) ==0:
+        return 1
     if len(type1) == 0 or len(type2) == 0:
         return 0
     if type1[0] != 5 and type2[0] != 5:
@@ -1205,6 +1207,8 @@ def p_FunctionMarker(p):
                 p[3].leaf["label"]) + " at line " + str(p.lineno(1))
             exit()
         else:
+            # print t.type
+            # print p[0].children[3].leaf["type"]
             if check_type(t.type,p[0].children[3].leaf["type"],cur_symtab[-2])==True and len(t.args)==len(p[0].children[2].leaf["type"]):
                 for x in range(0,len(t.args)):
                     if check_type(t.args[x],p[0].children[2].leaf["type"][x],cur_symtab[-2])==0:
@@ -3122,7 +3126,13 @@ def p_PrimaryExpr(p):
                 # IR Gen
 
                 var1 = p[1].leaf['place']
-                place = var1+"."+str(offset)
+                if len(var1.split('['))!=1:
+                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1] +=4
+                    code += [["=",v1,"&"+str(var1)]]
+                    place = v1+"."+str(offset)
+                else:
+                    place = var1+"."+str(offset)
 
         elif p[2].leaf["label"] == "Index":
             type_p = first_nontypedef(p[1].children[0].leaf["type"],
@@ -3154,6 +3164,19 @@ def p_PrimaryExpr(p):
                     code.append(["*",v2,v4,v1])
                     code.append(['+',v3,ind,v2])
                     place=p[1].leaf['place'].split("[")[0]+"["+v3+"]"
+                elif len(p[1].leaf["place"].split("."))!=1:
+                    v3 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1] +=4
+                    code += [["=",v3,"&"+p[1].leaf["place"]]]
+                    v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1]+=4
+                    v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                    func_offset[-1]+=4
+                    v4 = p[2].leaf['place']
+                    code.append(['=', v1, p[0].children[0].leaf['width']])
+                    code.append(["*",v2,v4,v1])
+                    place=v3+"["+v2+"]"
+
                 else:
                     v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1]+=4
@@ -3204,7 +3227,17 @@ def p_PrimaryExpr(p):
             func_offset[-1]+=4
             code.append(['push'])
             for i in range(len(type1)):
-                code.append(['push', p[2].leaf['place'][i]])
+                if len(p[2].leaf["place"][i].split("."))!=1 or len(p[2].leaf["place"][i].split("["))!=1 : 
+                    typ = p[2].leaf["type"][i]
+                    typ = first_nontypedef(typ,cur_symtab[-1])
+                    if (typ[0] == 3 or typ[0]==2) and len(typ)!=1:
+                        # isf=is_float(type2,cur_symtab[-1])
+                        v2 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
+                        func_offset[-1]+=4
+                        code.append(['=',v2,'&'+p[2].leaf['place'][i] ])
+                        code.append(['push', v2])    
+                else:
+                    code.append(['push', p[2].leaf['place'][i]])
             code.append(['call', nam, len(type1)])
 
             # pop_width_list = cur_symtab[0].data[nam].args_width
