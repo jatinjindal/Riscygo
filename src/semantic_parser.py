@@ -3126,7 +3126,7 @@ def p_PrimaryExpr(p):
                 # IR Gen
 
                 var1 = p[1].leaf['place']
-                if len(var1.split('['))!=1:
+                if len(var1.split('['))!=1 or len(var1.split('.'))!=1:
                     v1 = address_generate_compilername(func_offset[-1],4,cur_activation[-1].label,0)
                     func_offset[-1] +=4
                     code += [["=",v1,"&"+str(var1)]]
@@ -3465,7 +3465,7 @@ def p_StructType(p):
     for key in cur_symtab[-1].data:
         type1=cur_symtab[-1].data[key].type
         if len(type1)%2==0:
-            if type1[-4]==1 and type1[-3]==0:
+            if len(type1)>=4 and type1[-4]==1 and type1[-3]==0:
                 cur_symtab[-1].data[key].type[-3]=top.total
 
     dump_st()
