@@ -1787,8 +1787,11 @@ def p_ShortVarDecl(p):
             place=tmp_name)
         cur_offset[-1] += p[4].children[0].leaf["width"]
         func_offset[-1] += p[4].children[0].leaf["width"]
-        p[0].leaf["place"] = None
-        p[0].leaf["code"] = (  p[4].leaf["code"] + [["=", tmp_name, p[4].leaf["place"]]])
+        typ=first_nontypedef(p[4].children[0].leaf["type"],cur_symtab[-1])
+        if (typ[0]==2 or typ[0]==3) and len(typ)!=1:
+        else:
+            p[0].leaf["place"] = None
+            p[0].leaf["code"] = (  p[4].leaf["code"] + [["=", tmp_name, p[4].leaf["place"]]])
     else:
         print "Variable already declared.Error at lineno " + str(p.lineno(1))
         exit()
